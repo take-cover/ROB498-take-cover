@@ -9,7 +9,7 @@ from rclpy.qos import qos_profile_system_default
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool
 
-G_HEIGHT = 1.5
+G_HEIGHT = 0.8
 
 class CommNode(Node):
     def __init__(self):
@@ -57,10 +57,10 @@ class CommNode(Node):
         self.initial_pose = None
         self.latest_pose = None
         
-        if self.latest_pose is None:
-            self.waypoint_pose = self.latest_pose
-        else:
-            self.waypoint_pose = PoseStamped()
+        #if self.latest_pose is None:
+        #    self.waypoint_pose = self.latest_pose
+        #else:
+        self.waypoint_pose = PoseStamped()
         self.update_waypoint_pose(0.0, 0.0, 0.0)
         
         # state
@@ -91,7 +91,7 @@ class CommNode(Node):
         else:
             print("client service not ready")
 
-
+    # --------------------------- callbacks ------------------------------------------------------
     def callback_launch(self, request, response):
         """Handle LAUNCH command: take off to desired height above initial pose"""
         if self.initial_pose is None:
@@ -104,7 +104,7 @@ class CommNode(Node):
             print("calling cmd_arm_drone")
             self.cmd_arm_drone(True)
 
-        target_z = self.initial_pose.position.z + G_HEIGHT
+        target_z = self.initial_pose.pose.position.z + G_HEIGHT
 
         self.get_logger().info(f"Launch Requested. Target altitude: {G_HEIGHT}m")
 
@@ -142,34 +142,35 @@ class CommNode(Node):
         return response
 
     def callback_abort(self, request, response):
-        """Handle ABORT command"""
-        self.get_logger().warn("ABORT Requested! Cutting all thrust.")
+        # """Handle ABORT command"""
+        # self.get_logger().warn("ABORT Requested! Cutting all thrust.")
+        # if self.initial_pose is None:
+        #     response.success = False
+        #     response.message = "Initial pose not received yet."
+        #     return response
+
+        # self.publish_position(self.initial_pose.position.x, self.initial_pose.position.y, self.initial_pose.position.z)
+        # self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
+
+        # response.success = True
+
+        # response.message = "Emergency shutdown command sent. Drone should land immediately."
+        # return response
+
+        """Handle LAND command: descend back to intial altitude"""
         if self.initial_pose is None:
             response.success = False
-            response.message = "Initial pose not received yet."
+            response.message = "No initial pose."
             return response
 
-        self.publish_position(self.initial_pose.position.x, self.initial_pose.position.y, self.initial_pose.position.z)
         self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
 
-        response.success = True
-        '''
-        stop_msg = TwistStamped()
-        stop_msg.header.stamp = self.get_clock().now().to_msg()
-        stop_msg.header.frame_id = "map"
-        stop_msg.twist.linear.x = 0.0
-        stop_msg.twist.linear.y = 0.0
-        stop_msg.twist.linear.z = 0.0
-        stop_msg.twist.angular.x = 0.0
-        stop_msg.twist.angular.y = 0.0
-        stop_msg.twist.angular.z = 0.0
-
-        self.shutdown_publisher.publish(stop_msg)
+        self.update_waypoint_pose(self.latest_pose.position.x, self.latest_pose.position.y, self.latest_pose.position.z-G_HEIGHT) # set waypoint to just below initial position to encourage landing
 
         response.success = True
-        '''
-        response.message = "Emergency shutdown command sent. Drone should land immediately."
+        response.message = "Drone is landing."
         return response
+
 
     def realsense_callback(self, msg):
         """Update pose from RealSense"""
@@ -182,6 +183,9 @@ class CommNode(Node):
             self.initial_pose = current_pose
             self.get_logger().info("Realsense: set initial pose")
         self.latest_pose = current_pose
+        
+        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+    
 
     def vicon_callback(self, msg):
         """Store initial pose"""
@@ -203,9 +207,9 @@ class CommNode(Node):
             self.get_logger().info(f"Published self pose")
 
     def publish_waypoint(self):
-        self.hover_pose.header.stamp = self.get_clock().now().to_msg()
-        self.waypoint_pub.publish(self.hover_pose)
-        self.get_logger().info(f"Published waypoint: x={self.hover_pose.pose.position.x}, y={self.hover_pose.pose.position.y}, z={self.hover_pose.pose.position.z}")
+        self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
+        self.waypoint_pub.publish(self.waypoint_pose)
+        self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 
 def main(args=None):
