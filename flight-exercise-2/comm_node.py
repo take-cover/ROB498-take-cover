@@ -2,6 +2,12 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty, Trigger
 from geometry_msgs.msg import PoseStamped, TwistStamped
+from nav_msgs.msg import Odometry
+
+from rclpy.qos import qos_profile_system_default
+
+from mavros_msgs.msg import State
+from mavros_msgs.srv import CommandBool
 
 G_HEIGHT = 1.5
 
@@ -10,12 +16,27 @@ class CommNode(Node):
         super().__init__('rob498_drone_1')
 
         # publishers
-        self.pose_publisher = self.create_publisher(PoseStamped, '/rob498/drone_pos', 10)
-        self.shutdown_publisher = self.create_publisher(TwistStamped, '/rob498/shutdown', 10)
+        self.ego_pos_pub = self.create_publisher(
+            PoseStamped,
+            "/mavros/vision_pose/pose",
+            qos_profile_system_default
+        )
+        self.create_timer(5, self.publish_position) # publish vision pose at 20Hz
 
         # subscribers
-        # self.create_subscription(PoseStamped, '/mavros/vision_pose/pose', self.vision_pose_callback, 10)
-        self.create_subscription(PoseStamped, '/vicon/ROB498_Drone/ROB498_Drone', self.vision_pose_callback, 10)
+        self.vicon_sub = self.create_subscription( # not using if no vicon...
+            PoseStamped, 
+            '/vicon/ROB498_Drone/ROB498_Drone', 
+            self.vicon_callback,
+            10
+        )
+        self.realsense_sub = self.create_subscription(
+            Odometry,
+            "/camera/pose/sample",
+            self.realsense_callback,
+            qos_profile_system_default
+        )
+
 
         # services
         self.srv_launch = self.create_service(Trigger, 'rob498_drone_1/comm/launch', self.callback_launch)
@@ -23,8 +44,27 @@ class CommNode(Node):
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
+        # pose
         self.initial_pose = None
+        self.latest_pose = None
+
+        # state
+        self.state = State()
+        # mavros clients
+        self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
+
         self.get_logger().info("CommNode initiailized, has not received intial pose yet.")
+
+    # ---------------------------- commands -------------------------------------------------
+    def cmd_arm_drone(self, arm_status):
+        if self.arming_client.service_is_ready():
+            print("arming drone")
+            req = CommandBool.Request()
+            req.value = arm_status
+            self.arming_client.call_async(req)
+        else:
+            print("client service not ready")
+
 
     def callback_launch(self, request, response):
         """Handle LAUNCH command: take off to desired height above initial pose"""
@@ -33,10 +73,14 @@ class CommNode(Node):
             response.message = "No initial pose."
             return response
         
-        target_z = self.initial_pose.position.z + G_HEIGHT
+        # target_z = self.initial_pose.position.z + G_HEIGHT
 
-        self.publish_position(self.initial_pose.position.x, self.initial_pose.position.y, target_z)
-        self.get_logger().info(f"Launch Requested. Target altitude: {G_HEIGHT}m")
+        # self.get_logger().info(f"Launch Requested. Target altitude: {G_HEIGHT}m")
+
+        # arm drone if not armed yet
+        if not self.state.armed:
+            print("calling cmd_arm_drone")
+            self.cmd_arm_drone(True)
 
         response.success = True
         response.message = "Drone taking off."
@@ -93,22 +137,36 @@ class CommNode(Node):
         response.message = "Emergency shutdown command sent. Drone should land immediately."
         return response
 
-    def vision_pose_callback(self, msg):
+    def realsense_callback(self, msg):
+        """Update pose from RealSense"""
+        current_pose = PoseStamped()
+        current_pose.header.stamp = self.get_clock().now().to_msg()
+        current_pose.header.frame_id = "map"
+        current_pose.pose = msg.pose.pose
+
+        if self.initial_pose is None:
+            self.initial_pose = current_pose
+            self.get_logger().info("Realsense: set initial pose")
+        self.latest_pose = current_pose
+
+    def vicon_callback(self, msg):
         """Store initial pose"""
         if self.initial_pose is None:
             self.initial_pose = msg.pose
             self.publish_position(self.initial_pose.position.x, self.initial_pose.position.y, self.initial_pose.position.z)
             self.get_logger().info(f"Initial pose recorded and set: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
 
-    def publish_position(self, x, y, z):
+    def publish_position(self):
         """Publishes a new desired position."""
-        pos_msg = PoseStamped()
-        pos_msg.header.stamp = self.get_clock().now().to_msg()
-        pos_msg.header.frame_id = "map"
-        pos_msg.pose.position.x = x
-        pos_msg.pose.position.y = y
-        pos_msg.pose.position.z = z
-        self.pose_publisher.publish(pos_msg)
+        if self.latest_pose is None:
+            self.get_logger().info("Latest pose not registered, nothing to publish")
+        else:
+            # pos_msg = PoseStamped()
+            pos_msg = self.latest_pose # PoseStamped object
+            pos_msg.header.stamp = self.get_clock().now().to_msg()
+            pos_msg.header.frame_id = "map"
+            self.ego_pos_pub.publish(pos_msg)
+            self.get_logger().info(f"Published self pose")
 
 
 def main(args=None):
