@@ -12,7 +12,7 @@ from mavros_msgs.srv import CommandBool, SetMode
 
 import numpy as np
 
-G_HEIGHT = 0.4
+G_HEIGHT = 0.3
 
 class CommNode(Node):
     def __init__(self):
@@ -31,6 +31,7 @@ class CommNode(Node):
         )
 
         self.create_timer(1/30, self.publish_position) # publish vision pose at 20Hz
+        self.create_timer(2, self.print_position)
 
         self.waypoint_pub = self.create_publisher(
             PoseStamped, 
@@ -38,6 +39,7 @@ class CommNode(Node):
             qos_profile_system_default
         )
         self.create_timer(1/30, self.publish_waypoint) # publish waypoint at 20Hz
+        self.create_timer(2, self.print_waypoint)
 
         # I believe flight controller compares waypoint to current position
 
@@ -68,12 +70,7 @@ class CommNode(Node):
         self.initial_pose_cov = None
         self.latest_pose_cov = None
 
-
-        #if self.latest_pose is None:
-        #    self.waypoint_pose = self.latest_pose
-        #else:
         self.waypoint_pose = PoseStamped()
-        # self.update_waypoint_pose(0.0, 0.0, 0.0)
         self.waypoint_state = 0
         # 0 - set to latest pose
         # 1 - set to fixed position
@@ -84,11 +81,7 @@ class CommNode(Node):
         self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
         self.set_mode_client = self.create_client(SetMode, "mavros/set_mode")
 
-
         self.get_logger().info("CommNode initiailized, has not received intial pose yet.")
-
-        # Pose to hold when hover command is called
-        self.hover_pose = None
 
     # ----------------------------- helper functions -------------------------------------------------
     def update_waypoint_pose(self, x, y, z):
@@ -98,21 +91,26 @@ class CommNode(Node):
         self.waypoint_pose.pose.position.y = y  
         self.waypoint_pose.pose.position.z = z  
 
+        if self.waypoint_state != 0:
+            self.get_logger().info(f"Set waypoint to x={x}, y={y}, z={z}")
+
     # ---------------------------- commands -------------------------------------------------
     def cmd_arm_drone(self, arm_status):
-        if self.arming_client.service_is_ready():
-            print("arming drone")
+        if self.arming_client.service_is_ready():            
             req = CommandBool.Request()
             req.value = arm_status
             self.arming_client.call_async(req)
+            self.get_logger().info(f"Drone Armed")
         else:
-            print("client service not ready")
+            # print("client service not ready")
+            self.get_logger().info(f"Client Service not ready")
 
     def set_mode(self, mode):
         if self.set_mode_client.service_is_ready():
             req = SetMode.Request()
             req.custom_mode = mode
             self.set_mode_client.call_async(req)
+            self.get_logger().info(f"Set Mode to {mode}")
 
     # --------------------------- callbacks ------------------------------------------------------
     def callback_launch(self, request, response):
@@ -127,7 +125,8 @@ class CommNode(Node):
 
         # arm drone if not armed yet
         if not self.state.armed:
-            print("calling cmd_arm_drone")
+            # print("calling cmd_arm_drone")
+            self.get_logger().info(f"Arming Drone")
             self.cmd_arm_drone(True)
 
         target_z = self.latest_pose.pose.position.z + G_HEIGHT
@@ -202,14 +201,6 @@ class CommNode(Node):
 
     def realsense_callback(self, msg):
         """Update pose from RealSense"""
-       # print("\n\nmsg")
-       # print(msg)
-       # print("\n\nmsg.pose.pose")
-       # print(msg.pose.pose)
-       # print("\n\nmsh.pose.covariance")
-       # print(msg.pose.covariance)
-       # return
-    
         current_pose = PoseStamped()
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
@@ -241,7 +232,7 @@ class CommNode(Node):
         self.latest_pose = current_pose
         self.latest_pose_cov = current_pose_cov
         
-        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+        # self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
     
 
     def vicon_callback(self, msg):
@@ -261,13 +252,13 @@ class CommNode(Node):
             pos_msg.header.stamp = self.get_clock().now().to_msg()
             pos_msg.header.frame_id = "map"
             self.ego_pos_pub.publish(pos_msg)
-            self.get_logger().info(f"Published self pose")
+            # self.get_logger().info(f"Published self pose")
 
             pos_cov_msg = self.latest_pose_cov
             pos_cov_msg.header.stamp = self.get_clock().now().to_msg()
             pos_cov_msg.header.frame_id = "odom"
             self.ego_pos_cov_pub.publish(pos_cov_msg)
-            self.get_logger().info(f"Published self pose cov")
+            # self.get_logger().info(f"Published self pose cov")
 
             if self.waypoint_state == 0:
                 self.update_waypoint_pose(self.latest_pose.pose.position.x, self.latest_pose.pose.position.y, self.latest_pose.pose.position.z)
@@ -275,7 +266,15 @@ class CommNode(Node):
     def publish_waypoint(self):
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.waypoint_pub.publish(self.waypoint_pose)
-        self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
+        # self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
+
+    # --- prints ---
+    def print_position(self):
+        # self.get_logger().info()
+        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+
+    def print_waypoint(self):
+        self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 
 def main(args=None):
