@@ -253,13 +253,13 @@ class CommNode(Node):
         else:
             self.latest_pose.header.stamp = self.get_clock().now().to_msg()
             self.ego_pub.publish(self.latest_pose)
-            self.get_logger().info(f"Published latest pose")
+            #self.get_logger().info(f"Published latest pose")
 
 
     def publish_waypoint(self):
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.waypoint_pub.publish(self.waypoint_pose)
-        self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
+        #self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 
     def print_position(self):
