@@ -208,10 +208,10 @@ class CommNode(Node):
 
         # Rotate pose 90 deg about z axis to align with FC
         q_orig = [
-            msg.pose.orientation.x,
-            msg.pose.orientation.y,
-            msg.pose.orientation.z,
-            msg.pose.orientation.w
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
         ]
         q_rot = quaternion_from_euler(0, 0, math.pi/2)
         q_new = quaternion_multiply(q_orig, q_rot)
@@ -226,7 +226,7 @@ class CommNode(Node):
         # Update pose(s)
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
             
         self.latest_pose = current_pose
         
@@ -237,10 +237,10 @@ class CommNode(Node):
         """Update pose from Vicon"""
         if self.initial_pose is None:
             self.initial_pose = msg.pose
-            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
         self.latest_pose = msg.pose
-        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.position.x}, y={self.latest_pose.position.y}, z={self.latest_pose.position.z}")
+        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
 
     def publish_position(self):
