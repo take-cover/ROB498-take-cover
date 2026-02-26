@@ -13,3 +13,7 @@ This is the repo for team Take Cover for ROB498
  6. `python3 comm_node.py`
  7. `ros2 service list -t` --> then can just call the services
  8. to call a service: e.g.) `ros2 service call /rob498_drone_1/comm/launch std_srvs/srv/Trigger`
+
+ ### How to SSH to Jetson Nano on Local Device
+ 1. Connect to TP-Link_ROB498 Network (password is rob498drones)
+ 2. `ssh jetson@10.42.0.111` (password is jetson)
