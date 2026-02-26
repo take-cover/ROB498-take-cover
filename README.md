@@ -16,4 +16,12 @@ This is the repo for team Take Cover for ROB498
 
  ### How to SSH to Jetson Nano on Local Device
  1. Connect to TP-Link_ROB498 Network (password is rob498drones)
- 2. `ssh jetson@10.42.0.111` (password is jetson)
+ 2. `ssh jetson@10.42.0.121` (password is jetson)
+
+ ### How to Connect to QGC Wirelessly
+ 1. Must be connected to TP-Link_ROB498 Network
+ 2. On Jetsons, run `ros2 launch mavros.launch.py gcs_url:=udp://@<ip-address-on-local-computer>:14550`
+ 3. In QGroundControl, Application Settings -> Comm Links -> Add Link
+
+ ![QGC Wireless Connection Example](images/qgc_wireless_connection_ex.png)
+
