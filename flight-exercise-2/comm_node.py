@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty, Trigger
-from geometry_msgs.msg import PoseStamped, TwistStamped, Quaternion, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped, Quaternion
 from nav_msgs.msg import Odometry
 
 from rclpy.qos import qos_profile_system_default
@@ -17,18 +17,17 @@ import math
 
 G_HEIGHT = 0.4
 FREQ_30_HZ = 1/30
+FREQ_0_5_HZ = 2
 
 class CommNode(Node):
     def __init__(self):
         super().__init__('rob498_drone_1')
         # Poses
         self.initial_pose = None # Startup pose (first power on)
-        self.initial_pose_cov = None
         self.latest_pose = None
-        self.latest_pose_cov = None
 
         self.waypoint_pose = PoseStamped() # Pose to hold during test
-        self.waypoint_state = 0
+        self.test_state = 0
         # 0 - set to latest pose
         # 1 - set to fixed position
         
@@ -41,12 +40,8 @@ class CommNode(Node):
             "/mavros/vision_pose/pose",
             qos_profile_system_default
         )
-        self.ego_pos_cov_pub = self.create_publisher(
-            PoseWithCovarianceStamped,
-            "/mavros/vision_pose/pose_cov",
-            qos_profile_system_default
-        )
         self.create_timer(FREQ_30_HZ, self.publish_position) # publish vision pose at 30Hz
+        self.create_timer(FREQ_0_5_HZ, self.print_position)
 
         self.waypoint_pub = self.create_publisher(
             PoseStamped, 
@@ -54,6 +49,7 @@ class CommNode(Node):
             qos_profile_system_default
         )
         self.create_timer(FREQ_30_HZ, self.publish_waypoint) # publish waypoint at 30Hz
+        self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
 
         # I believe flight controller compares waypoint to current position
 
@@ -117,23 +113,21 @@ class CommNode(Node):
             response.success = False
             response.message = "No initial pose."
             return response
+        
+        self.set_mode("ALTCTL")
+        self.get_logger().info("Initiate manual takeoff.")
        
-        if self.state.mode != "OFFBOARD":
-            self.set_mode("OFFBOARD")
+        # if self.state.mode != "OFFBOARD":
+        #     self.set_mode("OFFBOARD")
 
-        # arm drone if not armed yet
-        if not self.state.armed:
-            print("Arming drone...")
-            self.arm_drone(True)
+        # # arm drone if not armed yet
+        # if not self.state.armed:
+        #     print("Arming drone...")
+        #     self.arm_drone(True)
 
-        target_z = self.latest_pose.pose.position.z + G_HEIGHT
+        # target_z = self.latest_pose.pose.position.z + G_HEIGHT
 
-        self.get_logger().info(f"Launch Requested. Target altitude: {G_HEIGHT}m")
-
-        # set hover pose to target altitude above initial position
-        if self.waypoint_state == 0:
-            self.update_waypoint_pose(self.waypoint_pose.pose.position.x, self.waypoint_pose.pose.position.y, target_z)     
-            self.waypoint_state = 1 # set to fixed position
+        # self.get_logger().info(f"Launch Requested. Target altitude: {G_HEIGHT}m")
 
         response.success = True
         response.message = "Drone taking off."
@@ -141,10 +135,16 @@ class CommNode(Node):
         return response
 
     def callback_test(self, request, response):
-        """Handle TEST command: just wait until TA done collecting data..."""
+        """Handle TEST command: Set waypoint & wait until TA done collecting data..."""
         self.get_logger().info("Test Requested. Starting test sequence.")
 
-        self.update_waypoint_pose(self.latest_pose.pose.position.x, self.latest_pose.pose.position.y, self.latest_pose.pose.position.z) # maintain current position during test
+        # self.update_waypoint_pose(self.latest_pose.pose.position.x, self.latest_pose.pose.position.y, self.latest_pose.pose.position.z) # maintain current position during test
+        if self.state.mode != "OFFBOARD":
+            self.set_mode("OFFBOARD")
+            
+        if self.test_state == 0:
+            self.update_waypoint_pose(self.latest_pose)
+            self.test_state = 1 # set to fixed position (position at the start of test call)
 
         response.success = True
         response.message = "Test has started. Recording data."
@@ -181,15 +181,18 @@ class CommNode(Node):
         # response.message = "Emergency shutdown command sent. Drone should land immediately."
         # return response
 
-        """Handle LAND command: descend back to intial altitude"""
+        """Handle ABORT command: descend back to intial altitude"""
         if self.initial_pose is None:
             response.success = False
             response.message = "No initial pose."
             return response
 
-        self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
+        # self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
 
-        self.update_waypoint_pose(self.latest_pose.position.x, self.latest_pose.position.y, self.latest_pose.position.z-G_HEIGHT) # set waypoint to just below initial position to encourage landing
+        # self.update_waypoint_pose(self.latest_pose.position.x, self.latest_pose.position.y, self.latest_pose.position.z-G_HEIGHT) # set waypoint to just below initial position to encourage landing
+        self.get_logger().info(f"ABORT Requested! Returning control to manual")
+        self.set_mode("ALTCTL")
+
 
         response.success = True
         response.message = "Drone is landing."
@@ -197,28 +200,23 @@ class CommNode(Node):
 
 
     def realsense_callback(self, msg):
-        """Update pose from RealSense""" 
+        """Update pose from RealSense"""    
         current_pose = PoseStamped()
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
         current_pose.pose = msg.pose.pose
 
-        current_pose_cov = PoseWithCovarianceStamped()
-        current_pose_cov.header.stamp = self.get_clock().now().to_msg()
-        current_pose_cov.header.frame_id = "map"
-        current_pose_cov.pose = msg.pose
-
         # Rotate pose 90 deg about z axis to align with FC
         q_orig = [
-            msg.pose.pose.orientation.x,
-            msg.pose.pose.orientation.y,
-            msg.pose.pose.orientation.z,
-            msg.pose.pose.orientation.w
+            msg.pose.orientation.x,
+            msg.pose.orientation.y,
+            msg.pose.orientation.z,
+            msg.pose.orientation.w
         ]
         q_rot = quaternion_from_euler(0, 0, math.pi/2)
         q_new = quaternion_multiply(q_orig, q_rot)
 
-        current_pose.pose.pose.orientation = Quaternion(
+        current_pose.pose.orientation = Quaternion(
             x=q_new[0],
             y=q_new[1],
             z=q_new[2],
@@ -228,11 +226,9 @@ class CommNode(Node):
         # Update pose(s)
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.initial_pose_cov = current_pose_cov
             self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
             
         self.latest_pose = current_pose
-        self.latest_pose_cov = current_pose_cov
         
         self.get_logger().info(f"Realsense - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
     
@@ -256,20 +252,18 @@ class CommNode(Node):
             self.ego_pos_pub.publish(self.latest_pose)
             self.get_logger().info(f"Published latest self pose")
 
-            # pos_cov_msg = self.latest_pose_cov
-            # pos_cov_msg.header.stamp = self.get_clock().now().to_msg()
-            # pos_cov_msg.header.frame_id = "odom"
-            # self.ego_pos_cov_pub.publish(pos_cov_msg)
-            # self.get_logger().info(f"Published self pose cov")
-
-            if self.waypoint_state == 0:
-                self.update_waypoint_pose(self.latest_pose)
 
     def publish_waypoint(self):
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.waypoint_pub.publish(self.waypoint_pose)
         self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
+
+    def print_position(self):
+        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+
+    def print_waypoint(self):
+        self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 def main(args=None):
     rclpy.init(args=args)
