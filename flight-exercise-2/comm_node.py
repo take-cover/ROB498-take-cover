@@ -9,16 +9,35 @@ from rclpy.qos import qos_profile_system_default
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 
-
 import numpy as np
+
 
 G_HEIGHT = 0.4
 
 class CommNode(Node):
     def __init__(self):
         super().__init__('rob498_drone_1')
+        # Poses
+        self.initial_pose = None
+        self.initial_pose_cov = None
+        self.latest_pose = None
+        self.latest_pose_cov = None
 
-        # publishers
+        self.waypoint_pose = PoseStamped() # Pose to hold during test
+        self.waypoint_state = 0
+        # 0 - set to latest pose
+        # 1 - set to fixed position
+        
+        self.vicon_enabled = False
+
+        self.state = State()
+        # mavros clients
+        self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
+        self.set_mode_client = self.create_client(SetMode, "mavros/set_mode")
+
+        self.get_logger().info("CommNode initiailized; initial pose not yet received.")
+
+        # Set up publishers
         self.ego_pos_pub = self.create_publisher(
             PoseStamped,
             "/mavros/vision_pose/pose",
@@ -29,20 +48,19 @@ class CommNode(Node):
             "/mavros/vision_pose/pose_cov",
             qos_profile_system_default
         )
-
-        self.create_timer(1/30, self.publish_position) # publish vision pose at 20Hz
+        self.create_timer(1/30, self.publish_position) # publish vision pose at 30Hz
 
         self.waypoint_pub = self.create_publisher(
             PoseStamped, 
             'mavros/setpoint_position/local', 
             qos_profile_system_default
         )
-        self.create_timer(1/30, self.publish_waypoint) # publish waypoint at 20Hz
+        self.create_timer(1/30, self.publish_waypoint) # publish waypoint at 30Hz
 
         # I believe flight controller compares waypoint to current position
 
-        # subscribers
-        self.vicon_sub = self.create_subscription( # not using if no vicon...
+        # Set up subscribers
+        self.vicon_sub = self.create_subscription(
             PoseStamped, 
             '/vicon/ROB498_Drone/ROB498_Drone', 
             self.vicon_callback,
@@ -55,48 +73,18 @@ class CommNode(Node):
             qos_profile_system_default
         )
 
-
-        # services
+        # Create services
         self.srv_launch = self.create_service(Trigger, 'rob498_drone_1/comm/launch', self.callback_launch)
         self.srv_test = self.create_service(Trigger, 'rob498_drone_1/comm/test', self.callback_test)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
-        # pose
-        self.initial_pose = None
-        self.latest_pose = None
-        self.initial_pose_cov = None
-        self.latest_pose_cov = None
-
-
-        #if self.latest_pose is None:
-        #    self.waypoint_pose = self.latest_pose
-        #else:
-        self.waypoint_pose = PoseStamped()
-        # self.update_waypoint_pose(0.0, 0.0, 0.0)
-        self.waypoint_state = 0
-        # 0 - set to latest pose
-        # 1 - set to fixed position
-
-        # state
-        self.state = State()
-        # mavros clients
-        self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
-        self.set_mode_client = self.create_client(SetMode, "mavros/set_mode")
-
-
-        self.get_logger().info("CommNode initiailized, has not received intial pose yet.")
-
-        # Pose to hold when hover command is called
-        self.hover_pose = None
 
     # ----------------------------- helper functions -------------------------------------------------
-    def update_waypoint_pose(self, x, y, z):
+    def update_waypoint_pose(self, PoseStamped):
+        self.waypoint_pose = PoseStamped
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.waypoint_pose.header.frame_id = "map"
-        self.waypoint_pose.pose.position.x = x
-        self.waypoint_pose.pose.position.y = y  
-        self.waypoint_pose.pose.position.z = z  
 
     # ---------------------------- commands -------------------------------------------------
     def cmd_arm_drone(self, arm_status):
@@ -201,15 +189,7 @@ class CommNode(Node):
 
 
     def realsense_callback(self, msg):
-        """Update pose from RealSense"""
-       # print("\n\nmsg")
-       # print(msg)
-       # print("\n\nmsg.pose.pose")
-       # print(msg.pose.pose)
-       # print("\n\nmsh.pose.covariance")
-       # print(msg.pose.covariance)
-       # return
-    
+        """Update pose from RealSense""" 
         current_pose = PoseStamped()
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
@@ -217,60 +197,47 @@ class CommNode(Node):
 
         current_pose_cov = PoseWithCovarianceStamped()
         current_pose_cov.header.stamp = self.get_clock().now().to_msg()
-        current_pose_cov.header.frame_id = "odom"
+        current_pose_cov.header.frame_id = "map"
         current_pose_cov.pose = msg.pose
-
-        q = np.array([
-            msg.pose.pose.orientation.w,
-            msg.pose.pose.orientation.x,
-            msg.pose.pose.orientation.y,
-            msg.pose.pose.orientation.z
-        ])
-
-        current_pose.pose.orientation = Quaternion(
-            w=float(q[0]),
-            x=float(q[1]),
-            y=float(q[2]),
-            z=float(q[3])
-        )
 
         if self.initial_pose is None:
             self.initial_pose = current_pose
             self.initial_pose_cov = current_pose_cov
-            self.get_logger().info("Realsense: set initial pose")
+            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            
         self.latest_pose = current_pose
         self.latest_pose_cov = current_pose_cov
         
-        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+        self.get_logger().info(f"Realsense - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
     
 
     def vicon_callback(self, msg):
-        """Store initial pose"""
+        """Update pose from Vicon"""
         if self.initial_pose is None:
             self.initial_pose = msg.pose
-            self.get_logger().info(f"Vicon: Initial pose recorded and set: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+        
         self.latest_pose = msg.pose
+        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.position.x}, y={self.latest_pose.position.y}, z={self.latest_pose.position.z}")
+
 
     def publish_position(self):
         """Publishes a new desired position."""
         if self.latest_pose is None:
             self.get_logger().info("Latest pose not registered, nothing to publish")
         else:
-            # pos_msg = PoseStamped()
-            pos_msg = self.latest_pose # PoseStamped object
-            pos_msg.header.stamp = self.get_clock().now().to_msg()
-            pos_msg.header.frame_id = "map"
-            self.ego_pos_pub.publish(pos_msg)
+            self.latest_pose.header.stamp = self.get_clock().now().to_msg()
+            self.ego_pos_pub.publish(self.latest_pose)
             self.get_logger().info(f"Published self pose")
 
-            pos_cov_msg = self.latest_pose_cov
-            pos_cov_msg.header.stamp = self.get_clock().now().to_msg()
-            pos_cov_msg.header.frame_id = "odom"
-            self.ego_pos_cov_pub.publish(pos_cov_msg)
-            self.get_logger().info(f"Published self pose cov")
+            # pos_cov_msg = self.latest_pose_cov
+            # pos_cov_msg.header.stamp = self.get_clock().now().to_msg()
+            # pos_cov_msg.header.frame_id = "odom"
+            # self.ego_pos_cov_pub.publish(pos_cov_msg)
+            # self.get_logger().info(f"Published self pose cov")
 
             if self.waypoint_state == 0:
-                self.update_waypoint_pose(self.latest_pose.pose.position.x, self.latest_pose.pose.position.y, self.latest_pose.pose.position.z)
+                self.update_waypoint_pose(self.latest_pose)
 
     def publish_waypoint(self):
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
