@@ -27,9 +27,7 @@ class CommNode(Node):
         self.latest_pose = None
 
         self.waypoint_pose = PoseStamped() # Pose to hold during test
-        self.test_state = 0
-        # 0 - set to latest pose
-        # 1 - set to fixed position
+        self.test_state = 0 # 0 = not started, 1 = hold position during test
         
         self.vicon_enabled = False
         self.state = State()
@@ -138,7 +136,6 @@ class CommNode(Node):
         """Handle TEST command: Set waypoint & wait until TA done collecting data..."""
         self.get_logger().info("Test Requested. Starting test sequence.")
 
-        # self.update_waypoint_pose(self.latest_pose.pose.position.x, self.latest_pose.pose.position.y, self.latest_pose.pose.position.z) # maintain current position during test
         if self.state.mode != "OFFBOARD":
             self.set_mode("OFFBOARD")
             
@@ -151,48 +148,34 @@ class CommNode(Node):
         return response
     
     def callback_land(self, request, response):
-        """Handle LAND command: descend back to intial altitude"""
-        if self.initial_pose is None:
-            response.success = False
-            response.message = "No initial pose."
-            return response
+        """Handle LAND command: descend back to initial altitude"""
+        # if self.initial_pose is None:
+        #     response.success = False
+        #     response.message = "No initial pose."
+        #     return response
 
-        self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
+        self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.pose.position.z}m")
+        
+        land_pose = PoseStamped()
+        land_pose.header.stamp = self.get_clock().now().to_msg()
+        land_pose.header.frame_id = "map"
+        land_pose.pose = self.latest_pose.pose
+        land_pose.pose.position.z = self.initial_pose.pose.position.z - 0.05 # set waypoint to just below initial position to encourage landing
 
-        self.update_waypoint_pose(self.initial_pose.position.x, self.initial_pose.position.y, self.initial_pose.position.z-0.05) # set waypoint to just below initial position to encourage landing
+        self.update_waypoint_pose(land_pose)
 
         response.success = True
         response.message = "Drone is landing."
         return response
 
     def callback_abort(self, request, response):
-        # """Handle ABORT command"""
-        # self.get_logger().warn("ABORT Requested! Cutting all thrust.")
-        # if self.initial_pose is None:
-        #     response.success = False
-        #     response.message = "Initial pose not received yet."
-        #     return response
+        """
+        Handle ABORT command: descend back to intiial altitude
+        CURRENTLY: hands over control to manual mode
+        """
 
-        # self.publish_position(self.initial_pose.position.x, self.initial_pose.position.y, self.initial_pose.position.z)
-        # self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
-
-        # response.success = True
-
-        # response.message = "Emergency shutdown command sent. Drone should land immediately."
-        # return response
-
-        """Handle ABORT command: descend back to intial altitude"""
-        if self.initial_pose is None:
-            response.success = False
-            response.message = "No initial pose."
-            return response
-
-        # self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.position.z}m")
-
-        # self.update_waypoint_pose(self.latest_pose.position.x, self.latest_pose.position.y, self.latest_pose.position.z-G_HEIGHT) # set waypoint to just below initial position to encourage landing
         self.get_logger().info(f"ABORT Requested! Returning control to manual")
         self.set_mode("ALTCTL")
-
 
         response.success = True
         response.message = "Drone is landing."
@@ -208,15 +191,15 @@ class CommNode(Node):
 
         # Rotate pose 90 deg about z axis to align with FC
         q_orig = [
-            msg.pose.orientation.x,
-            msg.pose.orientation.y,
-            msg.pose.orientation.z,
-            msg.pose.orientation.w
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
         ]
         q_rot = quaternion_from_euler(0, 0, math.pi/2)
         q_new = quaternion_multiply(q_orig, q_rot)
 
-        current_pose.pose.orientation = Quaternion(
+        current_pose.pose.pose.orientation = Quaternion(
             x=q_new[0],
             y=q_new[1],
             z=q_new[2],
@@ -226,7 +209,7 @@ class CommNode(Node):
         # Update pose(s)
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
             
         self.latest_pose = current_pose
         
@@ -237,10 +220,10 @@ class CommNode(Node):
         """Update pose from Vicon"""
         if self.initial_pose is None:
             self.initial_pose = msg.pose
-            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.position.x}, y={self.initial_pose.position.y}, z={self.initial_pose.position.z}")
+            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
         self.latest_pose = msg.pose
-        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.position.x}, y={self.latest_pose.position.y}, z={self.latest_pose.position.z}")
+        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
 
     def publish_position(self):
