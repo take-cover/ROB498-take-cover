@@ -186,7 +186,9 @@ class CommNode(Node):
         land_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
         # land_pose.pose.position.z = self.initial_pose.pose.position.z - 0.05 # set waypoint to just below initial position to encourage landing
 
-        self.update_waypoint_pose(land_pose)
+        # self.update_waypoint_pose(land_pose)
+        self.get_logger().info(f"Land Requested. Target altitude: {land_pose.pose.position.z}m")
+        self.waypoint_pose = land_pose
 
         response.success = True
         response.message = "Drone is landing."
