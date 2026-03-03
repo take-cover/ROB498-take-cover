@@ -15,15 +15,15 @@ import numpy as np
 import math
 
 
-#G_HEIGHT = 0.5
-G_HEIGHT = 0.2
-FREQ_30_HZ = 1/30
-FREQ_0_5_HZ = 2
-FREQ_10_HZ = 1/10
-LANDING_TOL = 0.1
-LANDED_TOL = 0.005
+HOVER_Z = 0.5 # [m]
+FREQ_30_HZ = 1/30 # [1/Hz]
+FREQ_0_5_HZ = 2 # [1/Hz]
+FREQ_10_HZ = 1/10 # [1/Hz]
+LANDING_TOL = 0.1 # [m]
+LANDED_TOL = 0.005 # [m]
+VICON_DRONE_GND_Z = 0 # UPDATE WITH REAL VICON MEASUREMENT
+LOG_LATEST_POSE = True
 
-Q_CAM_TO_BODY = quaternion_from_euler(math.pi, 0.0, math.pi)
 
 class CommNode(Node):
     def __init__(self):
@@ -33,7 +33,7 @@ class CommNode(Node):
         self.latest_pose = None
 
         self.waypoint_pose = PoseStamped() # Pose to hold during test
-        self.test_state = 0 # 0 = not started, 1 = hold position during test
+        self.test_state = 0 # 1 = hold position during test
         
         self.use_vicon = False
         self.state = State()
@@ -57,8 +57,6 @@ class CommNode(Node):
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
         
         self.create_timer(FREQ_10_HZ, self.check_land)
-
-        # I believe flight controller compares waypoint to current position
 
         # Set up subscribers
         if self.use_vicon:
@@ -123,6 +121,7 @@ class CommNode(Node):
             response.message = "No initial pose."
             return response
         
+        # Optional manual takeoff
         # self.set_mode("ALTCTL")
         # self.get_logger().info("Initiate manual takeoff.")
        
@@ -138,10 +137,8 @@ class CommNode(Node):
         target_pose.header.stamp = self.get_clock().now().to_msg()
         target_pose.header.frame_id = "map"
         target_pose.pose.position.x = self.initial_pose.pose.position.x
-        # target_pose.pose.position.x = self.initial_pose.pose.position.x + 0.2
         target_pose.pose.position.y = self.initial_pose.pose.position.y
-        target_pose.pose.position.z = self.initial_pose.pose.position.z + G_HEIGHT
-        # target_pose.pose.position.z = self.initial_pose.pose.position.z + 0.4
+        target_pose.pose.position.z = self.initial_pose.pose.position.z + HOVER_Z - VICON_DRONE_GND_Z # set target to hover at desired height above initial position
 
         target_pose.pose.orientation.x = self.initial_pose.pose.orientation.x
         target_pose.pose.orientation.y = self.initial_pose.pose.orientation.y
@@ -172,18 +169,10 @@ class CommNode(Node):
         return response
     
     def callback_land(self, request, response):
-        """Handle LAND command: descend back to initial altitude"""
-        # if self.initial_pose is None:
-        #     response.success = False
-        #     response.message = "No initial pose."
-        #     return response
-
-        # self.get_logger().info(f"Landing Requested. Returning to z={self.initial_pose.pose.position.z}m")
-        
+        """Handle LAND command: descend back to initial altitude"""        
         land_pose = PoseStamped()
         land_pose.header.stamp = self.get_clock().now().to_msg()
         land_pose.header.frame_id = "map"
-        # land_pose.pose = self.latest_pose.pose
         land_pose.pose.position.x = self.latest_pose.pose.position.x
         land_pose.pose.position.y = self.latest_pose.pose.position.y
         land_pose.pose.position.z = self.initial_pose.pose.position.z
@@ -191,9 +180,7 @@ class CommNode(Node):
         land_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
         land_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
         land_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
-        # land_pose.pose.position.z = self.initial_pose.pose.position.z - 0.05 # set waypoint to just below initial position to encourage landing
 
-        # self.update_waypoint_pose(land_pose)
         self.get_logger().info(f"Land Requested. Target altitude: {land_pose.pose.position.z}m")
         self.waypoint_pose = land_pose
         self.land_requested = True
@@ -235,7 +222,8 @@ class CommNode(Node):
             
         self.latest_pose = current_pose
         
-        self.get_logger().info(f"Realsense - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+        if LOG_LATEST_POSE:
+            self.get_logger().info(f"Realsense - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
     
 
     def vicon_callback(self, msg):
@@ -251,7 +239,9 @@ class CommNode(Node):
             self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
         self.latest_pose = current_pose
-        self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+        
+        if LOG_LATEST_POSE:
+            self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
 
     def publish_position(self):
