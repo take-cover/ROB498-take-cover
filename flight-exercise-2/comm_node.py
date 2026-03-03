@@ -18,6 +18,8 @@ import math
 G_HEIGHT = 0.2
 FREQ_30_HZ = 1/30
 FREQ_0_5_HZ = 2
+FREQ_10_HZ = 1/10
+LANDING_TOL = 0.1
 
 Q_CAM_TO_BODY = quaternion_from_euler(math.pi, 0.0, math.pi)
 
@@ -33,6 +35,7 @@ class CommNode(Node):
         
         self.use_vicon = False
         self.state = State()
+        self.land_requested = False
 
         # Set up publishers
         self.ego_pub = self.create_publisher(
@@ -50,6 +53,8 @@ class CommNode(Node):
         )
         self.create_timer(FREQ_30_HZ, self.publish_waypoint) # publish waypoint at 30Hz
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
+        
+        self.create_timer(FREQ_10_HZ, self.check_land)
 
         # I believe flight controller compares waypoint to current position
 
@@ -189,6 +194,7 @@ class CommNode(Node):
         # self.update_waypoint_pose(land_pose)
         self.get_logger().info(f"Land Requested. Target altitude: {land_pose.pose.position.z}m")
         self.waypoint_pose = land_pose
+        self.land_requested = True
 
         response.success = True
         response.message = "Drone is landing."
@@ -262,6 +268,11 @@ class CommNode(Node):
     def print_waypoint(self):
         self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
+
+    def check_land(self):
+        if self.land_requested:
+            if self.latest_pose.pose.position.z <= self.initial_pose.pose.position.z + LANDING_TOL:
+                self.set_mode("AUTO.LAND")
 
 def main(args=None):
     rclpy.init(args=args)
