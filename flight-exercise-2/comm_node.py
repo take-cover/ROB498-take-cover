@@ -37,7 +37,7 @@ class CommNode(Node):
         
         self.use_vicon = False
         self.state = State()
-        self.land_requested = False
+        # self.land_requested = False
 
         # Set up publishers
         self.ego_pub = self.create_publisher(
@@ -56,7 +56,7 @@ class CommNode(Node):
         self.create_timer(FREQ_30_HZ, self.publish_waypoint) # publish waypoint at 30Hz
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
         
-        self.create_timer(FREQ_10_HZ, self.check_land)
+        # self.create_timer(FREQ_10_HZ, self.check_land)
 
         # Set up subscribers
         if self.use_vicon:
@@ -170,20 +170,22 @@ class CommNode(Node):
     
     def callback_land(self, request, response):
         """Handle LAND command: descend back to initial altitude"""        
-        land_pose = PoseStamped()
-        land_pose.header.stamp = self.get_clock().now().to_msg()
-        land_pose.header.frame_id = "map"
-        land_pose.pose.position.x = self.latest_pose.pose.position.x
-        land_pose.pose.position.y = self.latest_pose.pose.position.y
-        land_pose.pose.position.z = self.initial_pose.pose.position.z
-        land_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
-        land_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
-        land_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
-        land_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
+        # land_pose = PoseStamped()
+        # land_pose.header.stamp = self.get_clock().now().to_msg()
+        # land_pose.header.frame_id = "map"
+        # land_pose.pose.position.x = self.latest_pose.pose.position.x
+        # land_pose.pose.position.y = self.latest_pose.pose.position.y
+        # land_pose.pose.position.z = self.initial_pose.pose.position.z
+        # land_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
+        # land_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
+        # land_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
+        # land_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
 
-        self.get_logger().info(f"Land Requested. Target altitude: {land_pose.pose.position.z}m")
-        self.waypoint_pose = land_pose
-        self.land_requested = True
+        # self.get_logger().info(f"Land Requested. Target altitude: {land_pose.pose.position.z}m")
+        # self.waypoint_pose = land_pose
+        # self.land_requested = True
+        
+        self.set_mode("AUTO.LAND")
 
         response.success = True
         response.message = "Drone is landing."
@@ -268,13 +270,13 @@ class CommNode(Node):
         self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 
-    def check_land(self):
-        if self.land_requested:
-            if self.latest_pose.pose.position.z <= self.initial_pose.pose.position.z + LANDED_TOL:
-                self.get_logger().info("Landed!")
-                self.land_requested = False
-            elif self.latest_pose.pose.position.z <= self.initial_pose.pose.position.z + LANDING_TOL:
-                self.set_mode("AUTO.LAND")
+    # def check_land(self):
+    #     if self.land_requested:
+    #         if self.latest_pose.pose.position.z <= self.initial_pose.pose.position.z + LANDED_TOL:
+    #             self.get_logger().info("Landed!")
+    #             self.land_requested = False
+    #         elif self.latest_pose.pose.position.z <= self.initial_pose.pose.position.z + LANDING_TOL:
+    #             self.set_mode("AUTO.LAND")
         
 
 def main(args=None):
