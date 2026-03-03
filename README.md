@@ -25,3 +25,8 @@ This is the repo for team Take Cover for ROB498
 
  ![QGC Wireless Connection Example](images/qgc_wireless_connection_ex.png)
 
+ ### How to Change Network on Jetson via CLI
+ 1. `nmcli device` to see which network wlan0 is currently connected to
+ 2. `nmcli device wifi list` to see which networks are available
+ 3. `sudo nmcli device wifi connect "YOUR_SSID_NAME" password "YOUR_WIFI_PASSWORD"` password not needed if previously connected to network
+
