@@ -129,10 +129,10 @@ class CommNode(Node):
         target_pose.header.stamp = self.get_clock().now().to_msg()
         target_pose.header.frame_id = "map"
         # target_pose.pose.position.x = self.initial_pose.pose.position.x
-        target_pose.pose.position.x = self.initial_pose.pose.position.x + G_HEIGHT
+        target_pose.pose.position.x = self.initial_pose.pose.position.x + 0.2
         target_pose.pose.position.y = self.initial_pose.pose.position.y
         # target_pose.pose.position.z = self.initial_pose.pose.position.z + G_HEIGHT
-        target_pose.pose.position.z = self.initial_pose.pose.position.z
+        target_pose.pose.position.z = self.initial_pose.pose.position.z + 0.4
 
         target_pose.pose.orientation.x = self.initial_pose.pose.orientation.x
         target_pose.pose.orientation.y = self.initial_pose.pose.orientation.y
