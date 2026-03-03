@@ -82,13 +82,9 @@ class CommNode(Node):
         self.get_logger().info("CommNode initiailized; initial pose not yet received.")
 
 
-    # ----------------------------- helper functions -------------------------------------------------
-    def update_waypoint_pose(self, PoseStamped):
-        self.waypoint_pose = PoseStamped
-        self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
-        self.waypoint_pose.header.frame_id = "map"
-
-    # ---------------------------- commands -------------------------------------------------
+    ############################################################################
+    # Drone commands
+    ############################################################################
     def arm_drone(self, arm_status):
         if self.arming_client.service_is_ready():
             req = CommandBool.Request()
@@ -97,6 +93,7 @@ class CommNode(Node):
             print("Drone armed")
         else:
             print("Arming client not ready")
+
 
     def set_mode(self, mode):
         if self.set_mode_client.service_is_ready():
@@ -108,7 +105,9 @@ class CommNode(Node):
             print("Set mode client not ready")
 
 
-    # --------------------------- Service callbacks ------------------------------------------------------
+    ############################################################################
+    # Service callbacks
+    ############################################################################
     def callback_launch(self, request, response):
         """Handle LAUNCH command: take off to desired height above initial pose"""
         if self.initial_pose is None:
@@ -186,6 +185,9 @@ class CommNode(Node):
         return response
 
 
+    ############################################################################
+    # External pose update callbacks (camera & Vicon)
+    ############################################################################
     def realsense_callback(self, msg):
         """Update pose from RealSense"""    
         current_pose = PoseStamped()
@@ -226,6 +228,9 @@ class CommNode(Node):
             self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
 
+    ############################################################################
+    # Publisher functions
+    ############################################################################
     def publish_position(self):
         """Publishes a new desired position."""
         if self.latest_pose is None:
@@ -242,6 +247,9 @@ class CommNode(Node):
             self.get_logger().info(f"Published waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
 
 
+    ############################################################################
+    # Print Functions
+    ############################################################################
     def print_position(self):
         self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
