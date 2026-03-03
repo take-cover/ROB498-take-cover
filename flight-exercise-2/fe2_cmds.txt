@@ -1,0 +1,12 @@
+ros2 launch mavros.launch.py gcs_url:=udp://@<ip-address-on-local-computer>:14550
+
+ros2 launch realsense2_camera rs_launch.py
+ros2 topic echo /vicon/ROB498_Drone/ROB498_Drone
+python3 comm_node.py
+
+ros2 service list -t
+
+ros2 service call /rob498_drone_1/comm/launch std_srvs/srv/Trigger
+ros2 service call /rob498_drone_1/comm/test std_srvs/srv/Trigger
+ros2 service call /rob498_drone_1/comm/land std_srvs/srv/Trigger
+ros2 service call /rob498_drone_1/comm/abort std_srvs/srv/Trigger
