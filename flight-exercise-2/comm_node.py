@@ -29,11 +29,11 @@ class CommNode(Node):
         self.waypoint_pose = PoseStamped() # Pose to hold during test
         self.test_state = 0 # 0 = not started, 1 = hold position during test
         
-        self.vicon_enabled = False
+        self.use_vicon = False
         self.state = State()
 
         # Set up publishers
-        self.ego_pos_pub = self.create_publisher(
+        self.ego_pub = self.create_publisher(
             PoseStamped,
             "/mavros/vision_pose/pose",
             qos_profile_system_default
@@ -52,18 +52,20 @@ class CommNode(Node):
         # I believe flight controller compares waypoint to current position
 
         # Set up subscribers
-        self.vicon_sub = self.create_subscription(
-            PoseStamped, 
-            '/vicon/ROB498_Drone/ROB498_Drone', 
-            self.vicon_callback,
-            10
-        )
-        self.realsense_sub = self.create_subscription(
-            Odometry,
-            "/camera/pose/sample",
-            self.realsense_callback,
-            qos_profile_system_default
-        )
+        if self.use_vicon:
+            self.vicon_sub = self.create_subscription(
+                PoseStamped, 
+                '/vicon/ROB498_Drone/ROB498_Drone', 
+                self.vicon_callback,
+                10
+            )
+        else:
+            self.realsense_sub = self.create_subscription(
+                Odometry,
+                "/camera/pose/sample",
+                self.realsense_callback,
+                qos_profile_system_default
+            )
 
         # Set up mavros clients
         self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
@@ -168,6 +170,7 @@ class CommNode(Node):
         response.message = "Drone is landing."
         return response
 
+
     def callback_abort(self, request, response):
         """
         Handle ABORT command: descend back to intiial altitude
@@ -188,23 +191,6 @@ class CommNode(Node):
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
         current_pose.pose = msg.pose.pose
-
-        # Rotate pose 90 deg about z axis to align with FC
-        q_orig = [
-            msg.pose.pose.orientation.x,
-            msg.pose.pose.orientation.y,
-            msg.pose.pose.orientation.z,
-            msg.pose.pose.orientation.w
-        ]
-        q_rot = quaternion_from_euler(0, 0, math.pi/2)
-        q_new = quaternion_multiply(q_orig, q_rot)
-
-        current_pose.pose.orientation = Quaternion(
-            x=q_new[0],
-            y=q_new[1],
-            z=q_new[2],
-            w=q_new[3]
-        )
 
         # Update pose(s)
         if self.initial_pose is None:
@@ -232,8 +218,8 @@ class CommNode(Node):
             self.get_logger().info("Latest pose not registered, nothing to publish")
         else:
             self.latest_pose.header.stamp = self.get_clock().now().to_msg()
-            self.ego_pos_pub.publish(self.latest_pose)
-            self.get_logger().info(f"Published latest self pose")
+            self.ego_pub.publish(self.latest_pose)
+            self.get_logger().info(f"Published latest pose")
 
 
     def publish_waypoint(self):
@@ -245,8 +231,10 @@ class CommNode(Node):
     def print_position(self):
         self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
+
     def print_waypoint(self):
         self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
+
 
 def main(args=None):
     rclpy.init(args=args)
