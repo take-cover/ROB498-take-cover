@@ -40,6 +40,7 @@ This is the repo for team Take Cover for ROB498
 
 ### Frames
 ![Frames](images/frames.png){width=800px}
+![Global Vicon Frame](images/global_frame.png){width=800px}
 
 ### Flight Exercise 2
 1. `ros2 launch realsense2_camera rs_launch.py`
@@ -49,3 +50,14 @@ This is the repo for team Take Cover for ROB498
 5. `ros2 service call /rob498_drone_1/comm/launch std_srvs/srv/Trigger`
 5. `ros2 service call /rob498_drone_1/comm/test std_srvs/srv/Trigger`
 6. `ros2 service call /rob498_drone_1/comm/land std_srvs/srv/Trigger`
+
+### Positioning the Drone for Vicon
+1. Install Vicon marker in this orientation
+![Propellor Directions](images/marker_installation.jpg){width=300px}
+2. Place drone so that front is facing windows (and back is facing the whiteboard)
+
+### Set Time on Jetson to Current Time
+1. Change to UofT network
+2. `sudo ntpdate pool.ntp.org`
+3. `date` returns the date
+
