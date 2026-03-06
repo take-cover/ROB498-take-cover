@@ -15,7 +15,7 @@ LOG_LATEST_POSE = True
 
 class MavrosVisionPoseNode(Node):
     def __init__(self):
-        super().__init__('rob498_drone_1')
+        super().__init__('rob498_drone_1_mavros_vision_pose_node')
         # Poses
         self.initial_pose = None # Startup pose (first power on)
         self.latest_pose = None
@@ -36,6 +36,7 @@ class MavrosVisionPoseNode(Node):
             "/team1_fe3/vision_pose/initial_pose",
             qos_profile_system_default
         )
+        self.create_timer(FREQ_0_5_HZ, self.publish_initial_position)
         
         # Set up subscribers
         if self.use_vicon:
@@ -72,7 +73,6 @@ class MavrosVisionPoseNode(Node):
         # Update pose(s)
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.publish_initial_position()
             self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
             
         self.latest_pose = current_pose
@@ -90,7 +90,6 @@ class MavrosVisionPoseNode(Node):
         # Update pose(s)
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.publish_initial_position()
             self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
         self.latest_pose = current_pose
