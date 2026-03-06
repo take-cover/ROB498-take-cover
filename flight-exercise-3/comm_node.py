@@ -1,7 +1,8 @@
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Trigger
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray
 from nav_msgs.msg import Odometry
 
 from rclpy.qos import qos_profile_system_default
@@ -37,14 +38,6 @@ class CommNode(Node):
         self.state = State()
 
         # Set up publishers
-        self.ego_pub = self.create_publisher(
-            PoseStamped,
-            "/mavros/vision_pose/pose",
-            qos_profile_system_default
-        )
-        self.create_timer(FREQ_30_HZ, self.publish_position) # publish vision pose at 30Hz
-        self.create_timer(FREQ_0_5_HZ, self.print_position)
-
         self.waypoint_pub = self.create_publisher(
             PoseStamped, 
             'mavros/setpoint_position/local', 
@@ -54,20 +47,24 @@ class CommNode(Node):
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
         
         # Set up subscribers
-        if self.use_vicon:
-            self.vicon_sub = self.create_subscription(
-                PoseStamped, 
-                '/vicon/ROB498_Drone/ROB498_Drone', 
-                self.vicon_callback,
-                10
-            )
-        else:
-            self.realsense_sub = self.create_subscription(
-                Odometry,
-                "/camera/pose/sample",
-                self.realsense_callback,
-                qos_profile_system_default
-            )
+        self.ego_sub = self.create_subscription(
+            PoseStamped,
+            "/mavros/vision_pose/pose",
+            self.mavros_vision_pose_callback,
+            qos_profile_system_default
+        )
+        self.ego_init_sub = self.create_subscription(
+            PoseStamped,
+            "/team1_fe3/vision_pose/initial_pose",
+            self.mavros_vision_initial_pose_callback,
+            qos_profile_system_default
+        )
+        self.sub_waypoints = self.create_subscription(
+            PoseArray, 
+            'rob498_drone_00/comm/waypoints', 
+            self.callback_waypoints, 
+            qos_profile_system_default
+        )
 
         # Set up mavros clients
         self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
@@ -184,62 +181,47 @@ class CommNode(Node):
         response.message = "Drone aborted."
         return response
 
-
     ############################################################################
-    # External pose update callbacks (camera & Vicon)
+    # Pose update callbacks (from MavrosVisionPoseNode)
     ############################################################################
-    def realsense_callback(self, msg):
-        """Update pose from RealSense"""    
+    def mavros_vision_pose_callback(self, msg):
         current_pose = PoseStamped()
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
         current_pose.pose = msg.pose.pose
-        
-        # Rotate pose from camera by 180 degrees in yaw (flip x and y axes)
-        current_pose.pose.position.x *= -1
-        current_pose.pose.position.y *= -1
 
-        # Update pose(s)
-        if self.initial_pose is None:
-            self.initial_pose = current_pose
-            self.get_logger().info(f"Realsense - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
-            
         self.latest_pose = current_pose
-        
-        if LOG_LATEST_POSE:
-            self.get_logger().info(f"Realsense - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
-    
 
-    def vicon_callback(self, msg):
-        """Update pose from Vicon"""
+
+    def mavros_vision_initial_pose_callback(self, msg):
         current_pose = PoseStamped()
         current_pose.header.stamp = self.get_clock().now().to_msg()
         current_pose.header.frame_id = "map"
-        current_pose.pose = msg.pose
-        
-        # Update pose(s)
+        current_pose.pose = msg.pose.pose
+
         if self.initial_pose is None:
             self.initial_pose = current_pose
-            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
+            self.get_logger().info(f"Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
-        self.latest_pose = current_pose
-        
-        if LOG_LATEST_POSE:
-            self.get_logger().info(f"Vicon - Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
+
+    ############################################################################
+    # Waypoints callback (TODO)
+    ############################################################################
+    def callback_waypoints(self, msg):
+        global WAYPOINTS_RECEIVED, WAYPOINTS
+        if WAYPOINTS_RECEIVED:
+            return
+        print('Waypoints Received')
+        WAYPOINTS_RECEIVED = True
+        WAYPOINTS = np.empty((0,3))
+        for pose in msg.poses:
+            pos = np.array([pose.position.x, pose.position.y, pose.position.z])
+            WAYPOINTS = np.vstack((WAYPOINTS, pos))
 
 
     ############################################################################
     # Publisher functions
     ############################################################################
-    def publish_position(self):
-        """Publishes a new desired position."""
-        if self.latest_pose is None:
-            self.get_logger().info("Latest pose not registered, nothing to publish")
-        else:
-            self.latest_pose.header.stamp = self.get_clock().now().to_msg()
-            self.ego_pub.publish(self.latest_pose)
-
-
     def publish_waypoint(self):
         self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.waypoint_pub.publish(self.waypoint_pose)
@@ -250,10 +232,6 @@ class CommNode(Node):
     ############################################################################
     # Print Functions
     ############################################################################
-    def print_position(self):
-        self.get_logger().info(f"Realsense: latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
-
-
     def print_waypoint(self):
         self.get_logger().info(f"Waypoint: x={self.waypoint_pose.pose.position.x}, y={self.waypoint_pose.pose.position.y}, z={self.waypoint_pose.pose.position.z}")
         
