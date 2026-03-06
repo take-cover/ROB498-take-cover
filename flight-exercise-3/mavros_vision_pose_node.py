@@ -7,13 +7,9 @@ from nav_msgs.msg import Odometry
 from rclpy.qos import qos_profile_system_default
 
 
-HOVER_Z = 0.5 # [m]
 FREQ_30_HZ = 1/30 # [1/Hz]
 FREQ_0_5_HZ = 2 # [1/Hz]
 FREQ_10_HZ = 1/10 # [1/Hz]
-LANDING_TOL = 0.1 # [m]
-LANDED_TOL = 0.005 # [m]
-VICON_DRONE_GND_Z = 0.18 # [m] UPDATE WITH REAL VICON MEASUREMENT
 
 LOG_LATEST_POSE = True
 
