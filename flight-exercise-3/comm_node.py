@@ -147,11 +147,13 @@ class CommNode(Node):
         response.message = "Drone taking off."
         
         global WAYPOINTS, WAYPOINTS_RECEIVED
+        p = np.array([[self.initial_pose.pose.position.x], [self.initial_pose.pose.position.y], [self.initial_pose.pose.position.z]])
         WAYPOINTS = np.array([
-            [0.2, 0.0, self.initial_pose.pose.position.z + HOVER_Z],
-            [-0.2, 0.0, self.initial_pose.pose.position.z + HOVER_Z],
-            [0.0, 0.2, self.initial_pose.pose.position.z + HOVER_Z]
+            [0.3, 0.0, HOVER_Z],
+            [-0.3, 0.0, HOVER_Z],
+            [0.0, -0.3, HOVER_Z]
         ]).T
+        WAYPOINTS += p
         WAYPOINTS_RECEIVED = True
 
         return response
