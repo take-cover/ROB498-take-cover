@@ -25,6 +25,9 @@ LOG_WAYPOINT = False
 WAYPOINTS = None
 WAYPOINTS_RECEIVED = False
 
+WAYPOINT_REACH_TOL = 0.05  # [m]
+WAYPOINT_HOLD_TIME = 3.0   # [s]
+
 class CommNode(Node):
     def __init__(self):
         super().__init__('rob498_drone_1')
@@ -45,6 +48,12 @@ class CommNode(Node):
         )
         self.create_timer(FREQ_30_HZ, self.publish_waypoint) # publish waypoint at 30Hz
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
+        self.create_timer(FREQ_10_HZ, self.run_waypoint_fsm)
+
+        # FSM state for test waypoint following
+        self.fsm_active = False
+        self.fsm_waypoint_index = 0
+        self.fsm_hold_start_time = None
         
         # Set up subscribers
         self.ego_sub = self.create_subscription(
@@ -73,6 +82,7 @@ class CommNode(Node):
         # Create services
         self.srv_launch = self.create_service(Trigger, 'rob498_drone_1/comm/launch', self.callback_launch)
         self.srv_test = self.create_service(Trigger, 'rob498_drone_1/comm/test', self.callback_test)
+        self.srv_fsm = self.create_service(Trigger, 'rob498_drone_1/comm/fsm', self.callback_fsm)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
@@ -135,6 +145,14 @@ class CommNode(Node):
 
         response.success = True
         response.message = "Drone taking off."
+        
+        global WAYPOINTS, WAYPOINTS_RECEIVED
+        WAYPOINTS = np.array([
+            [0.2, 0.0, self.initial_pose.pose.position.z + HOVER_Z],
+            [-0.2, 0.0, self.initial_pose.pose.position.z + HOVER_Z],
+            [0.0, 0.2, self.initial_pose.pose.position.z + HOVER_Z]
+        ]).T
+        WAYPOINTS_RECEIVED = True
 
         return response
 
@@ -164,13 +182,41 @@ class CommNode(Node):
         target_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
         target_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
         target_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
-        target_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
-        
+        target_pose.pose.orientation.w = self.latest_pose.pose.orientation.w
+
         self.get_logger().info("Test Requested. Starting test sequence.")
         self.waypoint_pose = target_pose
 
         response.success = True
         response.message = "Test has started. Recording data."
+        return response
+
+
+    def callback_fsm(self, request, response):
+        """Handle FSM command: start waypoint finite state machine."""
+        if not WAYPOINTS_RECEIVED or WAYPOINTS is None:
+            response.success = False
+            response.message = "Waypoints not received."
+            return response
+
+        if self.initial_pose is None:
+            response.success = False
+            response.message = "No initial pose."
+            return response
+
+        if self.state.mode != "OFFBOARD":
+            self.set_mode("OFFBOARD")
+
+        self.fsm_active = True
+        self.fsm_waypoint_index = 0
+        self.fsm_hold_start_time = None
+
+        # Immediately command the first waypoint so motion starts before next timer tick.
+        self.update_waypoint_target(0)
+        self.get_logger().info("FSM Requested. Starting waypoint FSM.")
+
+        response.success = True
+        response.message = "FSM started. Following waypoints."
         return response
     
 
@@ -189,6 +235,8 @@ class CommNode(Node):
         CURRENTLY: hands over control to manual mode
         """
         self.callback_land(request, response)
+        self.fsm_active = False
+        self.fsm_hold_start_time = None
 
         response.success = True
         response.message = "Drone aborted."
@@ -226,10 +274,70 @@ class CommNode(Node):
             return
         print('Waypoints Received')
         WAYPOINTS_RECEIVED = True
-        WAYPOINTS = np.empty((0,3))
+        WAYPOINTS = np.empty((3, 0))
         for pose in msg.poses:
-            pos = np.array([pose.position.x, pose.position.y, pose.position.z])
-            WAYPOINTS = np.vstack((WAYPOINTS, pos))
+            pos = np.array([[pose.position.x], [pose.position.y], [pose.position.z]])
+            WAYPOINTS = np.hstack((WAYPOINTS, pos))
+
+
+    def update_waypoint_target(self, waypoint_index):
+        """Set self.waypoint_pose to waypoint at index from WAYPOINTS (shape 3xN)."""
+        if WAYPOINTS is None:
+            return
+
+        self.waypoint_pose.header.stamp = self.get_clock().now().to_msg()
+        self.waypoint_pose.header.frame_id = "map"
+        self.waypoint_pose.pose.position.x = float(WAYPOINTS[0, waypoint_index])
+        self.waypoint_pose.pose.position.y = float(WAYPOINTS[1, waypoint_index])
+        self.waypoint_pose.pose.position.z = float(WAYPOINTS[2, waypoint_index])
+
+        if self.latest_pose is not None:
+            self.waypoint_pose.pose.orientation = self.latest_pose.pose.orientation
+
+
+    def run_waypoint_fsm(self):
+        """Finite state machine to follow waypoints sequentially with a hold-time check."""
+        if not self.fsm_active:
+            return
+
+        if WAYPOINTS is None or WAYPOINTS.shape[1] == 0 or self.latest_pose is None:
+            return
+
+        if self.fsm_waypoint_index >= WAYPOINTS.shape[1]:
+            self.fsm_active = False
+            self.fsm_hold_start_time = None
+            self.get_logger().info("Waypoint FSM complete: all checkpoints reached.")
+            return
+
+        # Always command the current waypoint while evaluating progress.
+        self.update_waypoint_target(self.fsm_waypoint_index)
+
+        current_pos = np.array([
+            self.latest_pose.pose.position.x,
+            self.latest_pose.pose.position.y,
+            self.latest_pose.pose.position.z,
+        ])
+        target_pos = WAYPOINTS[:, self.fsm_waypoint_index]
+        distance = np.linalg.norm(current_pos - target_pos)
+
+        now_s = self.get_clock().now().nanoseconds * 1e-9
+        if distance <= WAYPOINT_REACH_TOL:
+            if self.fsm_hold_start_time is None:
+                self.fsm_hold_start_time = now_s
+            elif (now_s - self.fsm_hold_start_time) >= WAYPOINT_HOLD_TIME:
+                self.get_logger().info(
+                    f"Reached waypoint {self.fsm_waypoint_index + 1}/{WAYPOINTS.shape[1]}"
+                )
+                self.fsm_waypoint_index += 1
+                self.fsm_hold_start_time = None
+
+                if self.fsm_waypoint_index < WAYPOINTS.shape[1]:
+                    self.update_waypoint_target(self.fsm_waypoint_index)
+                else:
+                    self.fsm_active = False
+                    self.get_logger().info("Waypoint FSM complete: all checkpoints reached.")
+        else:
+            self.fsm_hold_start_time = None
 
 
     ############################################################################
