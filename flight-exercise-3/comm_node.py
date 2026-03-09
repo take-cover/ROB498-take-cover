@@ -157,8 +157,8 @@ class CommNode(Node):
         target_pose = PoseStamped()
         target_pose.header.stamp = self.get_clock().now().to_msg()
         target_pose.header.frame_id = "map"
-        target_pose.pose.position.x = self.latest_pose.pose.position.x + 0.2
-        target_pose.pose.position.y = self.latest_pose.pose.position.y
+        target_pose.pose.position.x = self.latest_pose.pose.position.x + 0.4
+        target_pose.pose.position.y = self.latest_pose.pose.position.y + 0.4
         target_pose.pose.position.z = self.latest_pose.pose.position.z
 
         target_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
