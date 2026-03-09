@@ -141,17 +141,33 @@ class CommNode(Node):
 
     def callback_test(self, request, response):
         """Handle TEST command: Set waypoint & wait until TA done collecting data..."""
-        if not WAYPOINTS_RECEIVED:
+        # if not WAYPOINTS_RECEIVED:
+        #     response.success = False
+        #     response.message = "Waypoints not received."
+        #     return response
+
+        if self.initial_pose is None:
             response.success = False
-            response.message = "Waypoints not received."
+            response.message = "No initial pose."
             return response
-
-        self.get_logger().info("Test Requested. Starting test sequence.")
-
+        
         if self.state.mode != "OFFBOARD":
             self.set_mode("OFFBOARD")
-            
-        self.waypoint_pose = self.latest_pose
+
+        target_pose = PoseStamped()
+        target_pose.header.stamp = self.get_clock().now().to_msg()
+        target_pose.header.frame_id = "map"
+        target_pose.pose.position.x = self.latest_pose.pose.position.x + 0.2
+        target_pose.pose.position.y = self.latest_pose.pose.position.y
+        target_pose.pose.position.z = self.latest_pose.pose.position.z
+
+        target_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
+        target_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
+        target_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
+        target_pose.pose.orientation.w = self.latest_pose.pose.orientation.w  
+        
+        self.get_logger().info("Test Requested. Starting test sequence.")
+        self.waypoint_pose = target_pose
 
         response.success = True
         response.message = "Test has started. Recording data."
