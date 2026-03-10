@@ -27,8 +27,8 @@ LOG_WAYPOINT = False
 WAYPOINTS = None
 WAYPOINTS_RECEIVED = False
 
-WAYPOINT_REACH_TOL = 0.05  # [m]
-WAYPOINT_HOLD_TIME = 3.0   # [s]
+WAYPOINT_REACH_TOL = 0.1  # [m]
+WAYPOINT_HOLD_TIME = 0.5   # [s]
 
 
 class CommNode(Node):
