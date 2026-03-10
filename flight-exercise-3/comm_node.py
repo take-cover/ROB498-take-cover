@@ -27,8 +27,8 @@ LOG_WAYPOINT = False
 WAYPOINTS = None
 WAYPOINTS_RECEIVED = False
 
-WAYPOINT_REACH_TOL = 0.05  # [m]
-WAYPOINT_HOLD_TIME = 3.0   # [s]
+WAYPOINT_REACH_TOL = 0.1  # [m]
+WAYPOINT_HOLD_TIME = 0.5   # [s]
 
 
 class CommNode(Node):
@@ -55,11 +55,16 @@ class CommNode(Node):
         self.create_timer(FREQ_0_5_HZ, self.print_setpoint)
         
 
-        # FSM for waypoint following
+        # waypoint setup
+        # waypoint FSM
         self.create_timer(FREQ_10_HZ, self.run_waypoint_fsm)
         self.fsm_active = False
         self.fsm_waypoint_index = 0
         self.fsm_hold_start_time = None
+
+        # subtract offset if using camera
+        self.create_timer(FREQ_0_5_HZ, self.subtract_offset_to_waypoints)
+        self.subtract_waypoint_offset_done = False
         
         # Set up subscribers
         self.ego_sub = self.create_subscription(
@@ -187,6 +192,11 @@ class CommNode(Node):
             response.success = False
             response.message = "No initial pose."
             return response
+        
+        if not self.use_vicon and not self.subtract_waypoint_offset_done:
+            response.success = False
+            response.message = "Vicon offset not subtracted yet."
+            return response
 
         if self.state.mode != "OFFBOARD":
             self.set_mode("OFFBOARD")
@@ -274,6 +284,29 @@ class CommNode(Node):
             pos = np.array([[pose.position.x], [pose.position.y], [pose.position.z]])
             WAYPOINTS = np.hstack((WAYPOINTS, pos))
 
+    def subtract_offset_to_waypoints(self):
+        if self.use_vicon:
+            return
+
+        global WAYPOINTS_RECEIVED, WAYPOINTS
+        if not WAYPOINTS_RECEIVED or WAYPOINTS is None:
+            return
+        
+        if self.vicon_initial_pose is None:
+            return
+        
+        # subtract vicon_initial_pose from waypoints
+        vicon_x = self.vicon_initial_pose.pose.position.x
+        vicon_y = self.vicon_initial_pose.pose.position.y
+        vicon_z = self.vicon_initial_pose.pose.position.z
+
+        for i in range(WAYPOINTS.shape[1]):
+            WAYPOINTS[0,i] -= vicon_x
+            WAYPOINTS[1,i] -= vicon_y
+            WAYPOINTS[2,i] -= vicon_z
+        
+        self.subtract_waypoint_offset_done = True
+        self.get_logger().info("Vicon offset subtracted from waypoints.")
 
     def update_waypoint_target(self, waypoint_index):
         """Set self.setpoint_pose to waypoint at index from WAYPOINTS (shape 3xN)."""
