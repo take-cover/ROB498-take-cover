@@ -33,7 +33,6 @@ class MavrosVisionPoseNode(Node):
         # Init camera to Vicon Transform
         self.cam_to_vicon_tf = None
         
-
         # Set up publishers
         self.init_cam_pose_pub = self.create_publisher(
             PoseStamped,
@@ -71,7 +70,7 @@ class MavrosVisionPoseNode(Node):
             self.initial_vicon_pose_callback,
             qos_profile_system_default
         )
-        
+ 
         if self.use_vicon:
             self.vicon_sub = self.create_subscription(
                 PoseStamped,
