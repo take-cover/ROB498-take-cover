@@ -51,9 +51,10 @@ class CommNode(Node):
         )
         self.create_timer(FREQ_30_HZ, self.publish_waypoint) # publish waypoint at 30Hz
         self.create_timer(FREQ_0_5_HZ, self.print_waypoint)
-        self.create_timer(FREQ_10_HZ, self.run_waypoint_fsm)
+        
 
-        # FSM state for test waypoint following
+        # FSM for waypoint following
+        self.create_timer(FREQ_10_HZ, self.run_waypoint_fsm)
         self.fsm_active = False
         self.fsm_waypoint_index = 0
         self.fsm_hold_start_time = None
@@ -91,7 +92,6 @@ class CommNode(Node):
         # Create services
         self.srv_launch = self.create_service(Trigger, 'rob498_drone_1/comm/launch', self.callback_launch)
         self.srv_test = self.create_service(Trigger, 'rob498_drone_1/comm/test', self.callback_test)
-        self.srv_fsm = self.create_service(Trigger, 'rob498_drone_1/comm/fsm', self.callback_fsm)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
@@ -169,42 +169,7 @@ class CommNode(Node):
 
 
     def callback_test(self, request, response):
-        """Handle TEST command: Set waypoint & wait until TA done collecting data..."""
-        # if not WAYPOINTS_RECEIVED:
-        #     response.success = False
-        #     response.message = "Waypoints not received."
-        #     return response
-
-        if self.initial_pose is None:
-            response.success = False
-            response.message = "No initial pose."
-            return response
-        
-        if self.state.mode != "OFFBOARD":
-            self.set_mode("OFFBOARD")
-
-        target_pose = PoseStamped()
-        target_pose.header.stamp = self.get_clock().now().to_msg()
-        target_pose.header.frame_id = "map"
-        target_pose.pose.position.x = self.latest_pose.pose.position.x + 0.4
-        target_pose.pose.position.y = self.latest_pose.pose.position.y + 0.4
-        target_pose.pose.position.z = self.latest_pose.pose.position.z
-
-        target_pose.pose.orientation.x = self.latest_pose.pose.orientation.x
-        target_pose.pose.orientation.y = self.latest_pose.pose.orientation.y
-        target_pose.pose.orientation.z = self.latest_pose.pose.orientation.z
-        target_pose.pose.orientation.w = self.latest_pose.pose.orientation.w
-
-        self.get_logger().info("Test Requested. Starting test sequence.")
-        self.waypoint_pose = target_pose
-
-        response.success = True
-        response.message = "Test has started. Recording data."
-        return response
-
-
-    def callback_fsm(self, request, response):
-        """Handle FSM command: start waypoint finite state machine."""
+        """Handle Test Command: start waypoint finite state machine."""
         if not WAYPOINTS_RECEIVED or WAYPOINTS is None:
             response.success = False
             response.message = "Waypoints not received."
@@ -224,7 +189,7 @@ class CommNode(Node):
 
         # Immediately command the first waypoint so motion starts before next timer tick.
         self.update_waypoint_target(0)
-        self.get_logger().info("FSM Requested. Starting waypoint FSM.")
+        self.get_logger().info("Test requested, FSM Requested. Starting waypoint FSM.")
 
         response.success = True
         response.message = "FSM started. Following waypoints."
@@ -283,7 +248,7 @@ class CommNode(Node):
         global WAYPOINTS_RECEIVED, WAYPOINTS
         if WAYPOINTS_RECEIVED:
             return
-        print('Waypoints Received')
+        self.get_logger().info("Waypoints received.")
         WAYPOINTS_RECEIVED = True
         WAYPOINTS = np.empty((3, 0))
         for pose in msg.poses:
@@ -339,9 +304,7 @@ class CommNode(Node):
             if self.fsm_hold_start_time is None:
                 self.fsm_hold_start_time = now_s
             elif (now_s - self.fsm_hold_start_time) >= WAYPOINT_HOLD_TIME:
-                self.get_logger().info(
-                    f"Reached waypoint {self.fsm_waypoint_index + 1}/{WAYPOINTS.shape[1]}"
-                )
+                self.get_logger().info(f"Reached waypoint {self.fsm_waypoint_index + 1}/{WAYPOINTS.shape[1]}")
                 self.fsm_waypoint_index += 1
                 self.fsm_hold_start_time = None
 
