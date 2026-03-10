@@ -11,7 +11,7 @@ FREQ_30_HZ = 1/30 # [1/Hz]
 FREQ_0_5_HZ = 2 # [1/Hz]
 FREQ_10_HZ = 1/10 # [1/Hz]
 
-LOG_LATEST_POSE = True
+LOG_LATEST_POSE = False
 
 class MavrosVisionPoseNode(Node):
     def __init__(self):
