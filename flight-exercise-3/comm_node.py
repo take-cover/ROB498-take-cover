@@ -41,7 +41,7 @@ class CommNode(Node):
 
         self.use_vicon = False
         self.vicon_initial_pose = None
-        self.vicon_to_camera_tf = None
+        # self.vicon_to_camera_tf = None
         
         self.state = State()
 
@@ -86,12 +86,12 @@ class CommNode(Node):
             self.callback_waypoints, 
             qos_profile_system_default
         )
-        self.vicon_to_camera_tf = self.create_subscription(
-            TransformStamped, 
-            '/team1_fe3/vicon_to_camera_transform', 
-            self.callback_vicon_to_camera_tf, 
-            qos_profile_system_default
-        )
+        # self.vicon_to_camera_tf = self.create_subscription(
+        #     TransformStamped, 
+        #     '/team1_fe3/vicon_to_camera_transform', 
+        #     self.callback_vicon_to_camera_tf, 
+        #     qos_profile_system_default
+        # )
 
         # Set up mavros clients
         self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")
@@ -274,6 +274,7 @@ class CommNode(Node):
             pos = np.array([[pose.position.x], [pose.position.y], [pose.position.z]])
             WAYPOINTS = np.hstack((WAYPOINTS, pos))
 
+
     def update_waypoint_target(self, waypoint_index):
         """Set self.setpoint_pose to waypoint at index from WAYPOINTS (shape 3xN)."""
         if WAYPOINTS is None:
@@ -290,8 +291,8 @@ class CommNode(Node):
             new_waypoint.pose.orientation = self.latest_pose.pose.orientation
 
         # Transform waypoint from vicon frame to camera frame
-        if self.vicon_to_camera_tf is not None:
-            new_waypoint = transform_pose(new_waypoint, self.vicon_to_camera_tf)
+        # if self.vicon_to_camera_tf is not None:
+        #     new_waypoint = transform_pose(new_waypoint, self.vicon_to_camera_tf)
 
         self.setpoint_pose = new_waypoint
 
