@@ -39,7 +39,7 @@ class CommNode(Node):
         self.latest_pose = None
         self.setpoint_pose = PoseStamped() # Current setpoint
 
-        self.use_vicon = False
+        self.use_vicon = True
         self.vicon_initial_pose = None
         # self.vicon_to_camera_tf = None
         

@@ -22,7 +22,7 @@ class MavrosVisionPoseNode(Node):
 
         self.vicon_initial_pose = None
         
-        self.use_vicon = False
+        self.use_vicon = True
 
         # Set up publishers
         self.ego_pub = self.create_publisher(
