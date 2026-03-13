@@ -62,13 +62,12 @@ class MavrosVisionPoseNode(Node):
                 self.realsense_callback,
                 qos_profile_system_default
             )
-
-        self.vicon_initial_pose_sub = self.create_subscription(
-            PoseStamped,
-            '/vicon/ROB498_Drone/ROB498_Drone', 
-            self.vicon_initial_pose_callback,
-            qos_profile_system_default
-        )
+            self.vicon_initial_pose_sub = self.create_subscription(
+                PoseStamped,
+                '/vicon/ROB498_Drone/ROB498_Drone', 
+                self.vicon_initial_pose_callback,
+                qos_profile_system_default
+            )
 
         self.get_logger().info("MavrosVisionPoseNode initiailized; initial pose not yet received.")
 
@@ -108,6 +107,10 @@ class MavrosVisionPoseNode(Node):
             self.initial_pose = current_pose
             self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
         
+        if self.vicon_initial_pose is None:
+            self.vicon_initial_pose = current_pose
+            self.get_logger().info(f"Vicon Init Pose - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
+
         self.latest_pose = current_pose
         
         if LOG_LATEST_POSE:
@@ -123,7 +126,7 @@ class MavrosVisionPoseNode(Node):
         # Update initial vicon pose
         if self.vicon_initial_pose is None:
             self.vicon_initial_pose = current_pose
-            self.get_logger().info(f"Vicon - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
+            self.get_logger().info(f"Vicon Init Pose - Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
 
     ############################################################################
     # Publisher functions
