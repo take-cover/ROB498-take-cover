@@ -1,28 +1,47 @@
-#!pip install pyrealsense2 opencv-python numpy
-import pyrealsense2 as rs
-import numpy as np
 import cv2
 
-# Configure streams
-pipeline = rs.pipeline()
-config = rs.config()
-config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+def gstreamer_pipeline(
+    sensor_id=0,
+    capture_width=1280,
+    capture_height=720,
+    display_width=640,
+    display_height=480,
+    framerate=30,
+    flip_method=0,
+):
+    return (
+        "nvarguscamerasrc sensor-id=%d ! "
+        "video/x-raw(memory:NVMM), width=(int)%d, height=(int)%d, framerate=(fraction)%d/1 ! "
+        "nvvidconv flip-method=%d ! "
+        "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=(string)BGR ! appsink"
+        % (
+            sensor_id,
+            capture_width,
+            capture_height,
+            framerate,
+            flip_method,
+            display_width,
+            display_height,
+        )
+    )
 
-pipeline.start(config)
+# Initialize the camera
+cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0), cv2.CAP_GSTREAMER)
 
-try:
-    while True:
-        frames = pipeline.wait_for_frames()
-        color_frame = frames.get_color_frame()
-        if not color_frame: continue
-
-        # Convert images to numpy arrays
-        color_image = np.asanyarray(color_frame.get_data())
-
-        # Show the feed
-        cv2.imshow('RealSense IMX219 Feed', color_image)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-finally:
-    pipeline.stop()
+if cap.isOpened():
+    try:
+        while True:
+            ret_val, img = cap.read()
+            if not ret_val: break
+            
+            cv2.imshow("IMX219 Jetson Feed", img)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+else:
+    print("Error: Unable to open camera")
