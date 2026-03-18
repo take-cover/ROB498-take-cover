@@ -7,19 +7,20 @@ from rclpy.qos import qos_profile_system_default
 
 
 TIMER_30_HZ = 1/30 # [1/Hz]
+FRAMERATE = 60
 
 
 def gstreamer_pipeline(
-    capture_w=1280, capture_h=720, display_w=1280, display_h=720, framerate=1/TIMER_30_HZ, flip_method=0
+    capture_w=1280, capture_h=720, display_w=1280, display_h=720, framerate=FRAMERATE, flip_method=0
 ):
     return (
-        "nvarguscamerasrc sensor-id=1 ! "
+        f"nvarguscamerasrc sensor-id=1 ! "
         f"video/x-raw(memory:NVMM), width={capture_w}, height={capture_h}, framerate={framerate}/1 ! "
         f"nvvidconv flip-method={flip_method} ! "
         f"video/x-raw, width={display_w}, height={display_h}, format=BGRx ! "
-        "videoconvert ! "
+        f"videoconvert ! "
         f"video/x-raw, format=BGR ! "
-        "appsink"
+        f"appsink"
     )
 
 
