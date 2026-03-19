@@ -10,6 +10,7 @@ TIMER_30_HZ = 1/30 # [1/Hz]
 FRAMERATE = 60
 
 
+
 def gstreamer_pipeline(
     capture_w=1280, capture_h=720, display_w=1280, display_h=720, framerate=FRAMERATE, flip_method=0
 ):
