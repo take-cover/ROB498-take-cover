@@ -10,7 +10,9 @@ class Saver(Node):
         super().__init__('saver')
         self.bridge = CvBridge()
         self.window_name = 'camera/image_raw'
-        self.sub = self.create_subscription(Image, '/camera/image_raw', self.cb, 10)
+        self.window_name = 'aruco/debug_image'
+        # self.sub = self.create_subscription(Image, '/camera/image_raw', self.cb, 10)
+        self.sub = self.create_subscription(Image, '/aruco/debug_image', self.cb, 10)
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
 
     def cb(self, msg):

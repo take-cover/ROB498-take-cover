@@ -25,7 +25,7 @@ class ArucoDetectionNode(Node):
     def __init__(self):
         super().__init__('aruco_detection_node')
         self.bridge = CvBridge()
-        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
         self.aruco_params = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
 
@@ -63,6 +63,7 @@ class ArucoDetectionNode(Node):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         corners, ids, _ = self.detector.detectMarkers(gray)
+        print(corners, ids)
 
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
@@ -91,6 +92,11 @@ class ArucoDetectionNode(Node):
                     # Draw on debug image
                     cv2.aruco.drawDetectedMarkers(frame, corners)
                     cv2.drawFrameAxes(frame, CAMERA_MATRIX, DIST_COEFFS, rvec, tvec, 0.05)
+                    cv2.putText(frame, f"ID: {marker_id}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(frame, f"x: {tvec[0][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(frame, f"y: {tvec[1][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(frame, f"z: {tvec[2][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    
 
         # Publish debug image to be viewable in rqt
         if DEBUG_ON:
