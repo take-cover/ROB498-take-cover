@@ -19,10 +19,20 @@ LOG_LATEST_POSE = True
 LOG_SETPOINT = False
 
 WAYPOINTS = None
+
+WAYPOINTS = np.array([
+    [1.0, 0.0, -1.0, 0.0],
+    [0.0, 1.0, 0.0, -1.0],
+    [HOVER_Z, HOVER_Z, HOVER_Z, HOVER_Z]    
+])
+    
+
 WAYPOINTS_RECEIVED = False
 
 WAYPOINT_REACH_TOL = 0.1  # [m]
 WAYPOINT_HOLD_TIME = 0.5   # [s]
+
+
 
 
 class CommNode(Node):
@@ -239,7 +249,7 @@ class CommNode(Node):
 
 
     def run_waypoint_fsm(self):
-        """Finite state machine to follow waypoints sequentially with a hold-time check."""
+        """Finite state machine to follow waypoints sequentially in a continuous loop."""
         if not self.fsm_active:
             return
 
@@ -247,9 +257,10 @@ class CommNode(Node):
             return
 
         if self.fsm_waypoint_index >= WAYPOINTS.shape[1]:
-            self.fsm_active = False
+            # self.fsm_active = False
+            self.fsm_waypoint_index = 0
             self.fsm_hold_start_time = None
-            self.get_logger().info("Waypoint FSM complete: all checkpoints reached.")
+            self.get_logger().info("Waypoint FSM loop restart: returning to waypoint 1.")
             return
 
         # Always command the current waypoint while evaluating progress.
@@ -275,8 +286,10 @@ class CommNode(Node):
                 if self.fsm_waypoint_index < WAYPOINTS.shape[1]:
                     self.update_waypoint_target(self.fsm_waypoint_index)
                 else:
-                    self.fsm_active = False
-                    self.get_logger().info("Waypoint FSM complete: all checkpoints reached.")
+                    # self.fsm_active = False
+                    self.fsm_waypoint_index = 0
+                    self.get_logger().info("Waypoint loop complete: restarting from waypoint 1.")
+                    self.update_waypoint_target(self.fsm_waypoint_index)
         else:
             self.fsm_hold_start_time = None
             
