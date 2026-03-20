@@ -3,7 +3,7 @@
 This is the repo for team Take Cover for ROB498
 
 
-# Flight Exercise 2
+# General Flight Exercise Setup
 
  1. Vicon: make sure ROS_DOMAIN_ID = 1; ask TA to turn on vicon system;
  2. Have laptop be connected to ROB498 wifi; then, connect to Jetson via ssh
@@ -43,7 +43,7 @@ This is the repo for team Take Cover for ROB498
 ![Frames](images/frames.png){width=800px}
 ![Global Vicon Frame](images/global_frame.png){width=800px}
 
-### Flight Exercise 2
+### Flight Exercise 2 Setup
 1. `ros2 launch realsense2_camera rs_launch.py`
 2. `ros2 topic echo /vicon/ROB498_Drone/ROB498_Drone`, validate that x, y, z directions are expected
 3. `ros2 launch mavros.launch.py gcs_url:=udp://@<ip-address-on-local-computer>:14550`
@@ -53,12 +53,13 @@ This is the repo for team Take Cover for ROB498
 6. `ros2 service call /rob498_drone_1/comm/land std_srvs/srv/Trigger`
 
 ### Positioning the Drone for Vicon
-1. Install Vicon marker in this orientation
-![Propellor Directions](images/marker_installation.jpg){width=300px}
+1. Install Vicon marker in the orientation as shown under (#frames)
 2. Place drone so that front is facing windows (and back is facing the whiteboard)
 
 ### Set Time on Jetson to Current Time
 1. Change to UofT network
 2. `sudo ntpdate pool.ntp.org`
 3. `date` returns the date
+
+### SARDine Setup
 
