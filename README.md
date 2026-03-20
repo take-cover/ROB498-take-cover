@@ -43,7 +43,7 @@ This is the repo for team Take Cover for ROB498
 <img src="images/frames.png" alt="Frames" width="800"/>
 <img src="images/global_frame.png" alt="Global Vicon Frame" width="300"/>
 
-### Flight Exercise 2 Setup
+## Flight Exercise 2 Setup
 1. `ros2 launch realsense2_camera rs_launch.py`
 2. `ros2 topic echo /vicon/ROB498_Drone/ROB498_Drone`, validate that x, y, z directions are expected
 3. `ros2 launch mavros.launch.py gcs_url:=udp://@<ip-address-on-local-computer>:14550`
@@ -61,5 +61,5 @@ This is the repo for team Take Cover for ROB498
 2. `sudo ntpdate pool.ntp.org`
 3. `date` returns the date
 
-### SARDine Setup
+# SARDine Setup
 
