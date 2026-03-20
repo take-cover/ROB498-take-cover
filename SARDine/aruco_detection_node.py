@@ -29,10 +29,26 @@ class ArucoDetectionNode(Node):
         self.aruco_params = aruco.DetectorParameters()
         self.detector = aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
 
+        self.current_drone_pose = None
+        self.last_detection_drone_pose = None
+
+        self.pose_sub = self.create_subscription(
+            PoseStamped,
+            '/mavros/vision_pose/pose',
+            self.drone_pose_callback,
+            qos_profile_system_default
+        )
+
         self.image_sub = self.create_subscription(
             Image,
             '/camera/image_raw',
             self.image_callback,
+            qos_profile_system_default
+        )
+
+        self.drone_at_detection_pub = self.create_publisher(
+            PoseStamped, 
+            '/aruco/drone_pose_at_detection', 
             qos_profile_system_default
         )
         
@@ -56,7 +72,9 @@ class ArucoDetectionNode(Node):
         ], dtype=np.float32)
         
         self.get_logger().info("ArUco detection node initialized.")
-
+    
+    def drone_pose_callback(self, msg):
+        self.current_drone_pose = msg
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
@@ -65,6 +83,20 @@ class ArucoDetectionNode(Node):
         corners, ids, _ = self.detector.detectMarkers(gray)
 
         if ids is not None:
+            if self.current_drone_pose is not None:
+                self.last_detection_drone_pose = self.current_drone_pose
+                self.drone_at_detection_pub.publish(self.last_detection_drone_pose)
+                pos = self.current_drone_pose.pose.position
+                quat = self.current_drone_pose.pose.orientation
+                self.get_logger().info(
+                    f"\n--- ARUCO DETECTED: DRONE POSE ---"
+                    f"\nPOSITION:    x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f}"
+                    f"\nORIENTATION: x={quat.x:.3f}, y={quat.y:.3f}, z={quat.z:.3f}, w={quat.w:.3f}"
+                    f"\n----------------------------------"
+                )
+            else: 
+                self.get_logger().info("Tag Detected but drone pose is unknown!")
+
             for i, marker_id in enumerate(ids.flatten()):
                 _, rvec, tvec = cv2.solvePnP(
                     self.obj_points, corners[i][0], CAMERA_MATRIX, DIST_COEFFS
