@@ -36,12 +36,12 @@ This is the repo for team Take Cover for ROB498
  2. TP-Link_ROB498: jetson@10.42.0.101
 
  ### Installing Propellors
-![QGC Propellor Directions](images/qgc_propellor_orientations.jpg){width=300px}
-![Propellor Directions](images/propellor_direction.jpg){width=300px}
+<img src="images/qgc_propellor_orientations.jpg" alt="QGC Propellor Directions" width="300"/>
+<img src="images/propellor_direction.jpg" alt="Propellor Directions" width="300"/>
 
 ### Frames
-![Frames](images/frames.png){width=800px}
-![Global Vicon Frame](images/global_frame.png){width=800px}
+<img src="images/frames.png" alt="Frames" width="800"/>
+<img src="images/global_frame.png" alt="Global Vicon Frame" width="800"/>
 
 ### Flight Exercise 2 Setup
 1. `ros2 launch realsense2_camera rs_launch.py`
@@ -53,7 +53,7 @@ This is the repo for team Take Cover for ROB498
 6. `ros2 service call /rob498_drone_1/comm/land std_srvs/srv/Trigger`
 
 ### Positioning the Drone for Vicon
-1. Install Vicon marker in the orientation as shown under (#frames)
+1. Install Vicon marker in the orientation as shown under [Frames](#frames)
 2. Place drone so that front is facing windows (and back is facing the whiteboard)
 
 ### Set Time on Jetson to Current Time
