@@ -43,6 +43,11 @@ This is the repo for team Take Cover for ROB498
 <img src="images/frames.png" alt="Frames" width="800"/>
 <img src="images/global_frame.png" alt="Global Vicon Frame" width="300"/>
 
+### Set Time on Jetson to Current Time
+1. Change to UofT network
+2. `sudo ntpdate pool.ntp.org`
+3. `date` returns the date
+
 ## Flight Exercise 2 Setup
 1. `ros2 launch realsense2_camera rs_launch.py`
 2. `ros2 topic echo /vicon/ROB498_Drone/ROB498_Drone`, validate that x, y, z directions are expected
@@ -54,12 +59,8 @@ This is the repo for team Take Cover for ROB498
 
 ### Positioning the Drone for Vicon
 1. Install Vicon marker in the orientation as shown under [Frames](#frames)
-2. Place drone so that front is facing windows (and back is facing the whiteboard)
+2. Place drone so that front is facing windows (and back is facing the whiteboard); line up Vicon marker with global vicon frame
 
-### Set Time on Jetson to Current Time
-1. Change to UofT network
-2. `sudo ntpdate pool.ntp.org`
-3. `date` returns the date
 
 # SARDine Setup
 
