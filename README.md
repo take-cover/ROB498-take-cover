@@ -41,7 +41,7 @@ This is the repo for team Take Cover for ROB498
 
 ### Frames
 <img src="images/frames.png" alt="Frames" width="800"/>
-<img src="images/global_frame.png" alt="Global Vicon Frame" width="800"/>
+<img src="images/global_frame.png" alt="Global Vicon Frame" width="300"/>
 
 ### Flight Exercise 2 Setup
 1. `ros2 launch realsense2_camera rs_launch.py`
