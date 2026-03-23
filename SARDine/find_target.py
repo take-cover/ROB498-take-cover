@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 # Transform from RGB camera to the Vicon marker frame:
 # 180 deg rotation about X (wrt RGB camera frame)
 # Translations in x, y, z (wrt Vicon marker frame)
-r_cm_m = np.array([-0.1, 0.03, -0.05])  # [m] replace with measured translation
+r_cm_m = np.array([-0.16, 0.035, -0.11])  # [m] replace with measured translation
 T_MC = np.array([
     [1, 0, 0,   r_cm_m[0]],
     [0, -1, 0,  r_cm_m[1]],
