@@ -64,12 +64,6 @@ class CommNode(Node):
             self.mavros_vision_pose_callback,
             qos_profile_system_default
         )
-        self.waypoints_sub = self.create_subscription(
-            PoseArray, 
-            '/rob498_drone_1/comm/waypoints', 
-            self.waypoints_callback, 
-            qos_profile_system_default
-        )
 
         # Set up mavros clients
         self.arming_client = self.create_client(CommandBool, "mavros/cmd/arming")

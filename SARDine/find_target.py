@@ -27,7 +27,7 @@ class TrackandHoverNode(Node):
 
         self.aruco_pose_sub = self.create_subscription(
             PoseStamped,
-            '/aruco/marker_pose',
+            'take_cover/aruco/marker_pose',
             self.aruco_pose_callback,
             qos_profile_system_default
         )
@@ -43,7 +43,7 @@ class TrackandHoverNode(Node):
         
         self.target_pose_pub = self.create_publisher(
             PoseStamped,
-            '/target/position',
+            'take_cover/target/position',
             qos_profile_system_default
         )
 

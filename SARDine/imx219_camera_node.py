@@ -10,7 +10,6 @@ TIMER_30_HZ = 1/30 # [1/Hz]
 FRAMERATE = 60
 
 
-
 def gstreamer_pipeline(
     capture_w=1280, capture_h=720, display_w=1280, display_h=720, framerate=FRAMERATE, flip_method=0
 ):
@@ -30,7 +29,7 @@ class IMX219CameraNode(Node):
         super().__init__('imx219_camera_node')
         self.publisher = self.create_publisher(
             Image, 
-            '/camera/image_raw', 
+            'take_cover/camera/image_raw', 
             qos_profile_system_default
         )
         self.bridge = CvBridge()

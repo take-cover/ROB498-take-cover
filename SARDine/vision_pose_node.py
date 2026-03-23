@@ -14,8 +14,6 @@ from tf2_geometry_msgs import do_transform_pose
 TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 
-USE_VICON = False
-
 LOG_LATEST_POSE = True
     
 
@@ -25,25 +23,21 @@ class MavrosVisionPoseNode(Node):
         # Init pose variables
         self.initial_cam_pose = None # Startup pose (in camera frame)
         self.initial_vicon_pose = None # Startup pose (in Vicon frame)
-        
         self.latest_pose = None # Always in Vicon frame
         
-        self.use_vicon = USE_VICON
-        
-        # Init camera to Vicon Transform
-        self.cam_to_vicon_tf = None
+        self.cam_to_vicon_tf = None # Camera to Vicon Transform
         
         # Set up publishers
         self.init_cam_pose_pub = self.create_publisher(
             PoseStamped,
-            "/team1_fe3/vision_pose/initial_cam_pose",
+            "/take_cover/vision_pose/initial_cam_pose",
             qos_profile_system_default
         )
         self.create_timer(TIMER_0_5_HZ, self.publish_initial_cam_pose)
         
         self.init_vicon_pose_pub = self.create_publisher(
             PoseStamped,
-            "/team1_fe3/vision_pose/initial_vicon_pose",
+            "/take_cover/vision_pose/initial_vicon_pose",
             qos_profile_system_default
         )
         self.create_timer(TIMER_0_5_HZ, self.publish_initial_vicon_pose)
@@ -58,7 +52,7 @@ class MavrosVisionPoseNode(Node):
 
         self.cam_to_vicon_tf_pub = self.create_publisher(
             TransformStamped,
-            "/team1_fe3/cam_to_vicon_tf",
+            "/take_cover/cam_to_vicon_tf",
             qos_profile_system_default
         )
         self.create_timer(TIMER_0_5_HZ, self.publish_cam_to_vicon_tf)
@@ -71,7 +65,7 @@ class MavrosVisionPoseNode(Node):
             qos_profile_system_default
         )
  
-        if self.use_vicon:
+        if USE_VICON:
             self.vicon_sub = self.create_subscription(
                 PoseStamped,
                 '/vicon/ROB498_Drone/ROB498_Drone',
@@ -86,7 +80,7 @@ class MavrosVisionPoseNode(Node):
                 qos_profile_system_default
             )
             
-        if not self.use_vicon:
+        if not USE_VICON:
             # Calculate camera to Vicon frame transform using initial poses
             self.cam_to_vicon_tf_timer = self.create_timer(TIMER_0_5_HZ, self.calculate_cam_to_vicon_tf)
             
