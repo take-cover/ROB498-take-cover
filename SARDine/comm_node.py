@@ -76,7 +76,7 @@ class CommNode(Node):
         self.marker_world_pose_sub = self.create_subscription(
             PoseStamped,
             "/take_cover/target/position",
-            self.marker_world_pose_callback,
+            self.aruco_pose_callback,
             qos_profile_system_default
         )
 
@@ -92,6 +92,7 @@ class CommNode(Node):
 
         self.get_logger().info("CommNode initiailized; initial pose not yet received.")
 
+
     def master_fsm_transition(self, event):
         new_state = FSM.transition(self.master_fsm, event)
         if new_state is None:
@@ -100,6 +101,7 @@ class CommNode(Node):
         else:
             self.get_logger().info(f"Master FSM: Transitioned from state {self.master_fsm} to new state {new_state} via event {event}")
         self.master_fsm = new_state
+
 
     ############################################################################
     # Drone commands
@@ -244,6 +246,7 @@ class CommNode(Node):
         if LOG_LATEST_POSE:
             self.get_logger().info(f"Latest pose: x={self.latest_pose.pose.position.x}, y={self.latest_pose.pose.position.y}, z={self.latest_pose.pose.position.z}")
 
+
     ############################################################################
     # Waypoints callback
     ############################################################################
@@ -308,11 +311,13 @@ class CommNode(Node):
         else:
             self.fsm_hold_start_time = None
             
+            
     ############################################################################
     # Marker functions
     ############################################################################
-    def marker_world_pose_callback(self, msg): # PoseStamped
+    def aruco_pose_callback(self, msg): # PoseStamped
         pass
+
 
     ############################################################################
     # Evaluate State
