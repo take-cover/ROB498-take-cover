@@ -56,8 +56,7 @@ class CommNode(Node):
         self.fsm_hold_start_time = None
 
         # Master-FSM
-        self.master_fsm = FSM.State()
-        self.master_fsm = FSM.State.IDLE
+        self.master_fsm = FSM.State(FSM.State.IDLE)
         FSM.service_call_launch_done(False)
         FSM.service_call_test_done(False)
         self.create_timer(TIMER_30_HZ, self.evaluate_state)
@@ -66,6 +65,7 @@ class CommNode(Node):
             "started_launch": False,
             "started_test": False,
             "hover_height_reached": False,
+            "tracking_setpoint_reached": False,
             "received_aruco_pos_time": None
         }
 

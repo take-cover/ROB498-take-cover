@@ -1,5 +1,4 @@
 from enum import Enum, auto
-import utils
 
 ARUCO_POS_NOT_RECEIVED_TIME = 3 # [s]
 
@@ -22,15 +21,14 @@ class Event(Enum):
     REACHED_SETPOINT = auto()
     TIMER_NOT_RECEIVED_ARUCO_POSITION = auto()
 
-
 TRANSITIONS = {
     (State.IDLE, Event.SERVICE_CALL_LAUNCH): State.LAUNCHING,
     
     (State.LAUNCHING, Event.REACHED_HOVER_HEIGHT): State.HOVERING,
 
     (State.HOVERING, Event.SERVICE_CALL_TEST): State.SEARCHING,
-    (State.HOVERING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING if SERVICE_CALL_TEST_DONE else State.HOVERING,
-    (State.HOVERING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING if SERVICE_CALL_TEST_DONE else State.HOVERING,
+    (State.HOVERING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
+    (State.HOVERING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING,
 
     (State.SEARCHING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
 
@@ -65,8 +63,6 @@ def state_equal(state1, state2):
 def evaluate(
         state,
         state_vars,
-        setpoint_pose,
-        latest_pose
 ):
     new_state = state
 
@@ -80,6 +76,7 @@ def evaluate(
         if state_vars.get("started_launch", False):
             new_state = transition(state, Event.SERVICE_CALL_LAUNCH)
             service_call_launch_done(True)
+            print(SERVICE_CALL_LAUNCH_DONE)
 
     elif state_equal(state, State.LAUNCHING):
         if state_vars.get("hover_height_reached", False):
@@ -95,6 +92,7 @@ def evaluate(
             if state_vars.get("started_test", False):
                 new_state = transition(state, Event.SERVICE_CALL_TEST)
                 service_call_test_done(True)
+                print(SERVICE_CALL_TEST_DONE)
 
     elif state_equal(state, State.SEARCHING):
         if received_aruco_pos:
