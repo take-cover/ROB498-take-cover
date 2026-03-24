@@ -104,7 +104,7 @@ class CommNode(Node):
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
-        self.get_logger().info("CommNode initiailized; initial pose not yet received.")
+        self.get_logger().info(f"CommNode initiailized; initial pose not yet received. Master-FSM initialized to state {self.master_fsm}")
 
     ############################################################################
     # Drone commands
@@ -323,9 +323,7 @@ class CommNode(Node):
         # get new state
         new_state = FSM.evaluate(
             self.master_fsm,
-            self.state_vars,
-            self.setpoint_pose,
-            self.latest_pose
+            self.state_vars
         )
 
         # specific transition actions:
