@@ -31,20 +31,20 @@ class ArucoDetectionNode(Node):
 
         self.image_sub = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            'take_cover/camera/image_raw',
             self.image_callback,
             qos_profile_system_default
         )
         
         self.pose_pub = self.create_publisher(
             PoseStamped,
-            '/aruco/marker_pose',
+            'take_cover/aruco/marker_pose',
             qos_profile_system_default
         )
         if DEBUG_ON:
             self.debug_pub = self.create_publisher(
                 Image,
-                '/aruco/debug_image',
+                'take_cover/aruco/debug_image',
                 qos_profile_system_default
             )
 

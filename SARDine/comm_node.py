@@ -75,7 +75,7 @@ class CommNode(Node):
         )
         self.marker_world_pose_sub = self.create_subscription(
             PoseStamped,
-            "/team1_fe3/marker_world_pose",
+            "/take_cover/target/position",
             self.marker_world_pose_callback,
             qos_profile_system_default
         )
