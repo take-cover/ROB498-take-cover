@@ -19,9 +19,10 @@ TIMER_10_HZ = 1/10 # [1/Hz]
 VALID_POSE_TOL_S = 0.2 # [s]
 DEBUG_ON = True
 
-class TrackandHoverNode(Node):
+
+class TargetFinderNode(Node):
     def __init__(self):
-        super().__init__('track_and_hover')
+        super().__init__('target_finder')
         self.latest_aruco_pose = None
         self.latest_drone_pose = None
 
