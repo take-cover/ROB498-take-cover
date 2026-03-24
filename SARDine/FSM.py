@@ -1,4 +1,9 @@
 from enum import Enum, auto
+import utils
+
+WAYPOINT_REACH_TOL = 0.1  # [m]
+
+ARUCO_POS_NOT_RECEIVED_TIME = 3 # [s]
 
 class State(Enum):
     IDLE = auto()
@@ -22,6 +27,7 @@ class Event(Enum):
 
 TRANSITIONS = {
     (State.IDLE, Event.SERVICE_CALL_LAUNCH): State.LAUNCHING,
+    
     (State.LAUNCHING, Event.REACHED_HOVER_HEIGHT): State.HOVERING,
 
     (State.HOVERING, Event.SERVICE_CALL_TEST): State.SEARCHING,
@@ -47,9 +53,65 @@ def service_call_test_done(state):
 
 
 def transition(state, event):
-    return TRANSITIONS.get((state, event), None)
-
+    new_state = TRANSITIONS.get((state, event), None)
+    if new_state is None:
+        print(f"ERROR: FSM: Transition does not exist from state {state} with event {event}")
+        new_state = state
+    else:
+        print(f"FSM: Transitioned from state {state} to {new_state} with event {event}")
+    return new_state
 
 def state_equal(state1, state2):
     return state1 == state2
+
+def evaluate(
+        state,
+        state_vars,
+        setpoint_pose,
+        latest_pose
+):
+    new_state = state
+
+    received_aruco_pos = True
+    if state_vars.get("received_aruco_pos_time", None) is None:
+        received_aruco_pos = False
+    elif state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") >= ARUCO_POS_NOT_RECEIVED_TIME:
+        received_aruco_pos = False
+
+    if state_equal(state, State.IDLE):
+        if state_vars.get("started_launch", False):
+            new_state = transition(state, Event.SERVICE_CALL_LAUNCH)
+            service_call_launch_done(True)
+
+    elif state_equal(state, State.LAUNCHING):
+        if utils.PoseStamped_dist(setpoint_pose, latest_pose) < WAYPOINT_REACH_TOL:
+            new_state = transition(state, Event.REACHED_HOVER_HEIGHT)
+
+    elif state_equal(state, State.HOVERING):
+        if SERVICE_CALL_TEST_DONE:
+            if received_aruco_pos:
+                new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
+            else:
+                new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
+        else:
+            if state_vars.get("started_test", False):
+                new_state = transition(state, Event.SERVICE_CALL_TEST)
+                service_call_test_done(True)
+
+    elif state_equal(state, State.SEARCHING):
+        if received_aruco_pos:
+            new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
+
+    elif state_equal(state, State.TRACKING):
+        if utils.PoseStamped_dist(setpoint_pose, latest_pose) < WAYPOINT_REACH_TOL:
+            new_state = transition(state, Event.REACHED_HOVER_HEIGHT)
+        elif received_aruco_pos:
+            new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
+        else:
+            new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
+
+    else:
+        print(f"FSM: invalid state: {state}")
+
+    return new_state
 

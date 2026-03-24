@@ -17,3 +17,28 @@ def PoseStamped_dist(pose1, pose2):
 
     return np.linalg.norm(pose1_np - pose2_np)
 
+def NewPoseStamped(
+        stamp,
+        pos_x,
+        pos_y,
+        pos_z,
+        orient_x,
+        orient_y,
+        orient_z,
+        orient_w
+):
+    new_pose = PoseStamped()
+    new_pose.header.stamped = stamp
+    new_pose.header.frame_id = "map"
+
+    new_pose.pose.position.x = pos_x
+    new_pose.pose.position.y = pos_y
+    new_pose.pose.position.z = pos_z
+
+    new_pose.pose.orientation.x = orient_x
+    new_pose.pose.orientation.y = orient_y
+    new_pose.pose.orientation.z = orient_z
+    new_pose.pose.orientation.w = orient_w
+    
+    return new_pose
+

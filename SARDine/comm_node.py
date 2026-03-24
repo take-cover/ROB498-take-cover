@@ -30,6 +30,7 @@ WAYPOINT_REACH_TOL = 0.1  # [m]
 WAYPOINT_HOLD_TIME = 0.5   # [s]
 
 
+
 class CommNode(Node):
     """
     Handle main drone FSM logic and flying.
@@ -41,11 +42,15 @@ class CommNode(Node):
         self.initial_pose = None # Startup pose in Vicon frame
         self.latest_pose = None # Always in Vicon frame
         
-        self.setpoint_pose = PoseStamped() # Current setpoint
+        self.setpoint_pose = PoseStamped() # current setpoint
+        self.launch_setpoint_pose = PoseStamped()
+        self.hover_setpoint_pose = PoseStamped()
+        self.searching_setpoint_pose = PoseStamped()
+        self.tracking_setpoint_pose = PoseStamped()
         self.state = State() # mavros related
         
-        # Set up waypoint FSM
-        self.create_timer(TIMER_10_HZ, self.run_waypoint_fsm)
+        # Set up SEARCHING FSM
+        self.create_timer(TIMER_10_HZ, self.run_searching_fsm)
         self.fsm_active = False
         self.fsm_waypoint_index = 0
         self.fsm_hold_start_time = None
@@ -56,6 +61,12 @@ class CommNode(Node):
         FSM.service_call_launch_done(False)
         FSM.service_call_test_done(False)
         self.create_timer(TIMER_30_HZ, self.evaluate_state)
+        self.state_vars = {
+            "now_s": None,
+            "started_launch": False,
+            "started_test": False,
+            "received_aruco_pos_time": None
+        }
 
         # Set up publishers
         self.setpoint_pub = self.create_publisher(
@@ -91,17 +102,6 @@ class CommNode(Node):
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
 
         self.get_logger().info("CommNode initiailized; initial pose not yet received.")
-
-
-    def master_fsm_transition(self, event):
-        new_state = FSM.transition(self.master_fsm, event)
-        if new_state is None:
-            self.get_logger().info(f"ERROR: Master FSM: Transition does not exist from state {self.master_fsm} with event {event}")
-            new_state = self.master_fsm
-        else:
-            self.get_logger().info(f"Master FSM: Transitioned from state {self.master_fsm} to new state {new_state} via event {event}")
-        self.master_fsm = new_state
-
 
     ############################################################################
     # Drone commands
@@ -140,30 +140,19 @@ class CommNode(Node):
             response.success = False
             response.message = "No initial pose."
             return response
-       
-        if self.state.mode != "OFFBOARD":
-            self.set_mode("OFFBOARD")
-
-        if not self.state.armed:
-            self.arm_drone(True)
-            
-        target_pose = PoseStamped()
-        target_pose.header.stamp = self.get_clock().now().to_msg()
-        target_pose.header.frame_id = "map"
-        target_pose.pose.position.x = self.initial_pose.pose.position.x
-        target_pose.pose.position.y = self.initial_pose.pose.position.y
-        target_pose.pose.position.z = HOVER_Z
-
-        target_pose.pose.orientation.x = self.initial_pose.pose.orientation.x
-        target_pose.pose.orientation.y = self.initial_pose.pose.orientation.y
-        target_pose.pose.orientation.z = self.initial_pose.pose.orientation.z
-        target_pose.pose.orientation.w = self.initial_pose.pose.orientation.w       
+             
+        target_pose = utils.NewPoseStamped(
+            self.get_clock().now().to_msg(),
+            self.initial_pose.pose.position.x, self.initial_pose.pose.position.y, HOVER_Z,
+            self.initial_pose.pose.orientation.x, self.initial_pose.pose.orientation.y, self.initial_pose.pose.orientation.z,
+            self.initial_pose.pose.orientation.w 
+        )     
 
         self.get_logger().info(f"Launch Requested. Target altitude: {target_pose.pose.position.z}m")
-        self.setpoint_pose = target_pose
+        self.launch_setpoint_pose = target_pose
 
-        self.master_fsm_transition(FSM.Event.SERVICE_CALL_LAUNCH)
-        FSM.service_call_launch_done(True)
+        # update state vars
+        self.state_vars["started_launch"] = True
 
         response.success = True
         response.message = "Drone taking off."
@@ -187,19 +176,10 @@ class CommNode(Node):
             response.message = "No initial pose."
             return response
 
-        if self.state.mode != "OFFBOARD":
-            self.set_mode("OFFBOARD")
-
-        self.fsm_active = True
-        self.fsm_waypoint_index = 0
-        self.fsm_hold_start_time = None
-
-        # Immediately command the first waypoint so motion starts before next timer tick.
-        self.update_waypoint_target(0)
         self.get_logger().info("Test requested, FSM Requested. Starting waypoint FSM.")
 
-        self.master_fsm_transition(FSM.Event.SERVICE_CALL_TEST)
-        FSM.service_call_test_done(True)
+        # update state vars
+        self.state_vars["started_test"] = True
 
         response.success = True
         response.message = "FSM started. Following waypoints."
@@ -265,11 +245,11 @@ class CommNode(Node):
         if self.latest_pose is not None:
             new_waypoint.pose.orientation = self.latest_pose.pose.orientation
 
-        self.setpoint_pose = new_waypoint
+        self.searching_setpoint_pose = new_waypoint
 
 
-    def run_waypoint_fsm(self):
-        """Finite state machine to follow waypoints sequentially in a continuous loop."""
+    def run_searching_fsm(self):
+        """Finite state machine to follow searching-waypoints sequentially in a continuous loop."""
         if not self.fsm_active:
             return
 
@@ -316,41 +296,85 @@ class CommNode(Node):
     # Marker functions
     ############################################################################
     def aruco_pose_callback(self, msg): # PoseStamped
-        pass
+        target_pose = PoseStamped()
+        target_pose.header.stamp = self.get_clock().now().to_msg()
+        target_pose.header.frame_id = "map"
+        target_pose.pose = msg.pose
 
+        target_pose.pose.position.z = HOVER_Z
+
+        self.tracking_setpoint_pose = target_pose
+
+        now_s = self.get_clock().now().nanoseconds * 1e-9 # in seconds
+
+        # update state vars
+        self.state_vars["received_aruco_pos_time"] = now_s
 
     ############################################################################
     # Evaluate State
     ############################################################################
     def evaluate_state(self):
-        if FSM.state_equal(self.master_fsm, FSM.State.LAUNCHING):
-            # if np.linalg.norm(self.setpoint_pose.pose, self.latest_pose.pose)
-            if utils.PoseStamped_dist(self.latest_pose, self.setpoint_pose) < WAYPOINT_REACH_TOL:
-                self.master_fsm_transition(FSM.Event.REACHED_HOVER_HEIGHT)
+        now_s = self.get_clock().now().nanoseconds * 1e-9 # in seconds
+        self.state_vars["now_s"] = now_s
 
-        elif FSM.state_equal(self.master_fsm, FSM.State.HOVERING) and FSM.SERVICE_CALL_TEST_DONE:
-            if (timer aruco pos not received):
-                self.master_fsm_transition(FSM.Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
-            elif (received aruco position):
-                self.master_fsm_transition(FSM.Event.RECEIVED_ARUCO_POSITION)
+        # get new state
+        new_state = FSM.evaluate(
+            self.master_fsm,
+            self.state_vars,
+            self.setpoint_pose,
+            self.latest_pose
+        )
 
-        elif FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
-            if (received aruco position):
-                self.master_fsm_transition(FSM.Event.RECEIVED_ARUCO_POSITION)
-        
-        elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
-            if utils.PoseStamped_dist(self.latest_pose, self.setpoint_pose) < WAYPOINT_REACH_TOL:
-                self.master_fsm_transition(FSM.Event.REACHED_SETPOINT)
-            elif (timer aruco pos not received):
-                self.master_fsm_transition(FSM.Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
-            elif (received aruco position):
-                self.master_fsm_transition(FSM.Event.RECEIVED_ARUCO_POSITION)
+        # specific transition actions:
+
+        # IDLE --> LAUNCHING (SERVICE_CALL_LAUNCH)
+        if FSM.state_equal(new_state, FSM.State.LAUNCHING) \
+        and FSM.state_equal(self.master_fsm, FSM.State.IDLE):
+            if self.state.mode != "OFFBOARD":
+                self.set_mode("OFFBOARD")
+            if not self.state.armed:
+                self.arm_drone(True)
+
+        # !HOVERING --> HOVERING
+        elif FSM.state_equal(new_state, FSM.State.HOVERING) \
+        and not FSM.state_equal(self.master_fsm, FSM.State.HOVERING):
+            self.hover_setpoint_pose = self.latest_pose
+
+        # !SEARCHING --> SEARCHING
+        elif FSM.state_equal(new_state, FSM.State.SEARCHING) \
+        and not FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
+            if self.state.mode != "OFFBOARD": # should already be armed
+                self.set_mode("OFFBOARD")
+            # Immediately command the first waypoint so motion starts before next timer tick.
+            self.update_waypoint_target(0)
+            self.fsm_active = True
+            self.fsm_waypoint_index = 0
+            self.fsm_hold_start_time = None
+
+        # SEARCHING --> !SEARCHING
+        elif not FSM.state_equal(new_state, FSM.State.SEARCHING) \
+        and FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
+            self.fsm_active = False
+
+        # update state
+        self.master_fsm = new_state
 
 
     ############################################################################
     # Publisher functions
     ############################################################################
     def publish_setpoint(self):
+        if FSM.state_equal(self.master_fsm, FSM.State.IDLE):
+            return
+        elif FSM.state_equal(self.master_fsm, FSM.State.LAUNCHING):
+            self.setpoint_pose = self.launch_setpoint_pose
+        elif FSM.state_equal(self.master_fsm, FSM.State.HOVERING):
+            self.setpoint_pose = self.hover_setpoint_pose
+        elif FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
+            self.setpoint_pose = self.searching_setpoint_pose
+        elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
+            self.setpoint_pose = self.tracking_setpoint_pose
+
         self.setpoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.setpoint_pub.publish(self.setpoint_pose)
         if LOG_SETPOINT:
