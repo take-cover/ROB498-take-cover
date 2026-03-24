@@ -359,11 +359,6 @@ class CommNode(Node):
         # update state
         self.master_fsm = new_state
 
-
-    ############################################################################
-    # Publisher functions
-    ############################################################################
-    def publish_setpoint(self):
         if FSM.state_equal(self.master_fsm, FSM.State.IDLE):
             return
         elif FSM.state_equal(self.master_fsm, FSM.State.LAUNCHING):
@@ -375,6 +370,11 @@ class CommNode(Node):
         elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
             self.setpoint_pose = self.tracking_setpoint_pose
 
+
+    ############################################################################
+    # Publisher functions
+    ############################################################################
+    def publish_setpoint(self):
         self.setpoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.setpoint_pub.publish(self.setpoint_pose)
         if LOG_SETPOINT:
