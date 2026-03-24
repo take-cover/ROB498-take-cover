@@ -1,8 +1,6 @@
 from enum import Enum, auto
 import utils
 
-WAYPOINT_REACH_TOL = 0.1  # [m]
-
 ARUCO_POS_NOT_RECEIVED_TIME = 3 # [s]
 
 class State(Enum):
@@ -84,7 +82,7 @@ def evaluate(
             service_call_launch_done(True)
 
     elif state_equal(state, State.LAUNCHING):
-        if utils.PoseStamped_dist(setpoint_pose, latest_pose) < WAYPOINT_REACH_TOL:
+        if state_vars.get("hover_height_reached", False):
             new_state = transition(state, Event.REACHED_HOVER_HEIGHT)
 
     elif state_equal(state, State.HOVERING):
@@ -103,8 +101,8 @@ def evaluate(
             new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
 
     elif state_equal(state, State.TRACKING):
-        if utils.PoseStamped_dist(setpoint_pose, latest_pose) < WAYPOINT_REACH_TOL:
-            new_state = transition(state, Event.REACHED_HOVER_HEIGHT)
+        if state_vars.get("tracking_setpoint_reached", False):
+            new_state = transition(state, Event.REACHED_SETPOINT)
         elif received_aruco_pos:
             new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
         else:

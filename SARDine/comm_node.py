@@ -65,6 +65,7 @@ class CommNode(Node):
             "now_s": None,
             "started_launch": False,
             "started_test": False,
+            "hover_height_reached": False,
             "received_aruco_pos_time": None
         }
 
@@ -76,6 +77,8 @@ class CommNode(Node):
         )
         self.create_timer(TIMER_30_HZ, self.publish_setpoint) # publish waypoint at 30Hz
         self.create_timer(TIMER_0_5_HZ, self.print_setpoint)
+        self.create_timer(TIMER_30_HZ, self.check_setpoint_status)
+        self.setpoint_hold_start_time = None
         
         # Set up subscribers
         self.ego_sub = self.create_subscription(
@@ -372,13 +375,40 @@ class CommNode(Node):
 
 
     ############################################################################
-    # Publisher functions
+    # Setpoint functions
     ############################################################################
     def publish_setpoint(self):
         self.setpoint_pose.header.stamp = self.get_clock().now().to_msg()
         self.setpoint_pub.publish(self.setpoint_pose)
         if LOG_SETPOINT:
             self.get_logger().info(f"Published setpoint: x={self.setpoint_pose.pose.position.x}, y={self.setpoint_pose.pose.position.y}, z={self.setpoint_pose.pose.position.z}")
+
+    def check_setpoint_status(self):
+        if FSM.state_equal(self.master_fsm, FSM.State.IDLE):
+            return
+        
+        distance = utils.PoseStamped_dist(self.setpoint_pose, self.latest_pose)
+        now_s = self.get_clock().now().nanoseconds * 1e-9
+        reached_setpoint = False
+        if distance <= WAYPOINT_REACH_TOL:
+            if self.setpoint_hold_start_time is None:
+                self.setpoint_hold_start_time = now_s
+            elif (now_s - self.setpoint_hold_start_time) >= WAYPOINT_HOLD_TIME:
+                self.get_logger().info(f"Reached setpoint")
+                reached_setpoint = True
+                self.setpoint_hold_start_time = None
+        else:
+            self.setpoint_hold_start_time = None
+
+        if reached_setpoint:
+            if FSM.state_equal(self.master_fsm, FSM.State.LAUNCHING):
+                self.state_vars["hover_height_reached"] = True
+            elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
+                self.state_vars["tracking_setpoint_reached"] = True
+        else:
+            self.state_vars["hover_height_reached"] = False
+            self.state_vars["tracking_setpoint_reached"] = False
+
 
 
     ############################################################################
