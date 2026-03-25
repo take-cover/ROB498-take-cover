@@ -1,0 +1,42 @@
+#include <ESP32Servo.h>
+
+Servo myservo;
+const int servoPin = 2;   
+const int switchPin = 4;  // Input for Servo (See warning below!)
+const int sensorPin = 18; // Input for LED control
+const int ledPin = 19;    // Output to LED
+
+void setup() {
+  Serial.begin(115200);
+
+  // Configure Inputs
+  pinMode(switchPin, INPUT);
+  pinMode(sensorPin, INPUT);
+  
+  // Configure Output
+  pinMode(ledPin, OUTPUT);
+
+  // Servo Setup
+  ESP32PWM::allocateTimer(0);
+  myservo.setPeriodHertz(50);
+  myservo.attach(servoPin, 500, 2400); 
+}
+
+void loop() {
+  // 1. Continuous Servo Logic
+  if (digitalRead(switchPin) == HIGH) {
+    myservo.write(180);
+  } else {
+    myservo.write(0);
+  }
+
+  // 2. LED Logic (Pin 18 controls Pin 19)
+  if (digitalRead(switchPin) == HIGH) {
+    digitalWrite(ledPin, HIGH); // Turn LED ON
+  } else {
+    digitalWrite(ledPin, LOW);  // Turn LED OFF
+  }
+
+  // Small delay for stability
+  delay(20); 
+}
