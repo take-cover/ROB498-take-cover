@@ -21,8 +21,10 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool
 
-TOPIC   = '/rob498_drone_1/servo/drop'
-SERVICE = '/rob498_drone_1/servo/drop/trigger'
+from rclpy.qos import qos_profile_system_default
+
+TOPIC   = '/take_cover/servo/drop'
+SERVICE = '/take_cover/servo/drop/trigger'
 PUBLISH_RATE_HZ = 10.0   # re-publish current state at this rate
 
 
@@ -33,7 +35,7 @@ class ServoDropTriggerNode(Node):
         self._current_state = False   # False = home, True = drop
 
         # ── Publisher ────────────────────────────────────────────────────────
-        self._pub = self.create_publisher(Bool, TOPIC, 10)
+        self._pub = self.create_publisher(Bool, TOPIC, qos_profile_system_default)
 
         # ── Service ──────────────────────────────────────────────────────────
         self._srv = self.create_service(SetBool, SERVICE, self._trigger_callback)
