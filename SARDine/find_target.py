@@ -17,6 +17,10 @@ T_MC = np.array([
 ])
 TIMER_10_HZ = 1/10 # [1/Hz]
 VALID_POSE_TOL_S = 0.2 # [s]
+
+USE_VICON_Z = True # whether to use Vicon z or measured Z from RGB camera for Aruco tag distance
+ARUCO_TAG_Z_HEIGHT = 0.2 # [m] height of the ArUco tag above the ground, used if USE_VICON_Z is False
+
 DEBUG_ON = True
 
 
@@ -78,7 +82,8 @@ class TargetFinderNode(Node):
         r_pc_c = np.array([
             [self.latest_aruco_pose.pose.position.x],
             [self.latest_aruco_pose.pose.position.y],
-            [self.latest_aruco_pose.pose.position.z],
+            [self.latest_aruco_pose.pose.position.z if not USE_VICON_Z else \
+             self.latest_drone_pose.pose.position.z - r_cm_m[2]] - ARUCO_TAG_Z_HEIGHT, 
             [1]
         ])
         r_pm_m = T_MC @ r_pc_c
