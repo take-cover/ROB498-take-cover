@@ -15,6 +15,7 @@ TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 
 LOG_LATEST_POSE = True
+USE_VICON = True
     
 
 class MavrosVisionPoseNode(Node):

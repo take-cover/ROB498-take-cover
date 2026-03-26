@@ -313,6 +313,7 @@ class CommNode(Node):
         # update state vars
         self.state_vars["received_aruco_pos_time"] = now_s
 
+
     ############################################################################
     # Evaluate State
     ############################################################################
@@ -381,6 +382,7 @@ class CommNode(Node):
         if LOG_SETPOINT:
             self.get_logger().info(f"Published setpoint: x={self.setpoint_pose.pose.position.x}, y={self.setpoint_pose.pose.position.y}, z={self.setpoint_pose.pose.position.z}")
 
+
     def check_setpoint_status(self):
         if FSM.state_equal(self.master_fsm, FSM.State.IDLE):
             return
@@ -406,7 +408,6 @@ class CommNode(Node):
         else:
             self.state_vars["hover_height_reached"] = False
             self.state_vars["tracking_setpoint_reached"] = False
-
 
 
     ############################################################################

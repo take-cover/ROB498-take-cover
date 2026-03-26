@@ -57,8 +57,10 @@ def transition(state, event):
         print(f"FSM: Transitioned from state {state} to {new_state} with event {event}")
     return new_state
 
+
 def state_equal(state1, state2):
     return state1 == state2
+
 
 def evaluate(
         state,

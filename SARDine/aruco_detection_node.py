@@ -83,10 +83,10 @@ class ArucoDetectionNode(Node):
                 pose_msg.pose.orientation.z = 0.0
                 self.pose_pub.publish(pose_msg)
 
-                self.get_logger().info(
-                    f"Marker {marker_id}: x={tvec[0][0][0]:.2f}, "
-                    f"y={tvec[0][0][1]:.2f}, z={tvec[0][0][2]:.2f}"
-                )
+                # self.get_logger().info(
+                #     f"Marker {marker_id}: x={tvec[0][0][0]:.2f}, "
+                #     f"y={tvec[0][0][1]:.2f}, z={tvec[0][0][2]:.2f}"
+                # )
 
                 if DEBUG_ON:
                     # Draw on debug image

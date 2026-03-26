@@ -122,9 +122,9 @@ class TargetFinderNode(Node):
         self.target_pose_pub.publish(target_msg)
         
         if DEBUG_ON:
-            self.get_logger().info(f"Position of ArUco marker relative to RGB camera: x={r_pc_c[0][0]:.2f} m, y={r_pc_c[1][0]:.2f} m, z={r_pc_c[2][0]:.2f} m")
-            self.get_logger().info(f"Relative position of ArUco marker w.r.t. drone: x={r_pm_m[0][0]:.2f} m, y={r_pm_m[1][0]:.2f} m, z={r_pm_m[2][0]:.2f} m")
-            self.get_logger().info(f"Position of ArUco marker in global Vicon frame: x={r_pv_v[0][0]:.2f} m, y={r_pv_v[1][0]:.2f} m, z={r_pv_v[2][0]:.2f} m")
+            self.get_logger().info(f"Camera: x={r_pc_c[0][0]:.2f} m, y={r_pc_c[1][0]:.2f} m, z={r_pc_c[2][0]:.2f} m")
+            self.get_logger().info(f"Drone : x={r_pm_m[0][0]:.2f} m, y={r_pm_m[1][0]:.2f} m, z={r_pm_m[2][0]:.2f} m")
+            self.get_logger().info(f"Vicon : x={r_pv_v[0][0]:.2f} m, y={r_pv_v[1][0]:.2f} m, z={r_pv_v[2][0]:.2f} m")
 
     
 def main(args=None):
