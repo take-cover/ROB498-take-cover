@@ -19,7 +19,7 @@ TIMER_10_HZ = 1/10 # [1/Hz]
 VALID_POSE_TOL_S = 0.2 # [s]
 
 USE_VICON_Z = True # whether to use Vicon z or measured Z from RGB camera for Aruco tag distance
-ARUCO_TAG_Z_HEIGHT = 0.2 # [m] height of the ArUco tag above the ground, used if USE_VICON_Z is False
+ARUCO_TAG_Z_HEIGHT = 0.1 # [m] height of the ArUco tag above the ground, used if USE_VICON_Z is False
 
 DEBUG_ON = True
 
