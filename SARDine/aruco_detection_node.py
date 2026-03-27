@@ -73,8 +73,8 @@ class ArucoDetectionNode(Node):
                 pose_msg = PoseStamped()
                 pose_msg.header.stamp = self.get_clock().now().to_msg()
                 pose_msg.header.frame_id = "camera"
-                pose_msg.pose.position.x = float(tvec[0][0])
-                pose_msg.pose.position.y = float(tvec[1][0])
+                pose_msg.pose.position.x = float(tvec[0][0]) * -1 # Hacky fix because we rotated the imx219 180 degrees
+                pose_msg.pose.position.y = float(tvec[1][0]) * -1
                 pose_msg.pose.position.z = float(tvec[2][0])
                 # Default quaternion (no rotation)
                 pose_msg.pose.orientation.w = 1.0 
@@ -93,8 +93,8 @@ class ArucoDetectionNode(Node):
                     cv2.aruco.drawDetectedMarkers(frame, corners)
                     cv2.drawFrameAxes(frame, CAMERA_MATRIX, DIST_COEFFS, rvec, tvec, 0.05)
                     cv2.putText(frame, f"ID: {marker_id}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    cv2.putText(frame, f"x: {tvec[0][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    cv2.putText(frame, f"y: {tvec[1][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(frame, f"x: {(tvec[0][0]*-1):.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv2.putText(frame, f"y: {(tvec[1][0]*-1):.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     cv2.putText(frame, f"z: {tvec[2][0]:.3f}", (int(corners[i][0][0][0]), int(corners[i][0][0][1]) + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     
 

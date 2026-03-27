@@ -229,6 +229,11 @@ class CommNode(Node):
         if self.initial_pose is None:
             self.initial_pose = current_pose
             self.get_logger().info(f"Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
+            
+            current_pose_array = np.array([[current_pose.pose.x], [current_pose.pose.y], [0]])
+            global SEARCH_WAYPOINTS
+            SEARCH_WAYPOINTS += current_pose_array
+            self.get_logger().info(f"Updated search waypoints with initial pose offset: {SEARCH_WAYPOINTS}")
 
         self.latest_pose = current_pose
         if LOG_LATEST_POSE:
@@ -291,7 +296,7 @@ class CommNode(Node):
                 self.fsm_waypoint_index += 1
                 self.fsm_hold_start_time = None
                 
-                if self.fsm_waypoint_index > SEARCH_WAYPOINTS.shape[1]:
+                if self.fsm_waypoint_index >= SEARCH_WAYPOINTS.shape[1]:
                     self.fsm_waypoint_index = 0
                     self.get_logger().info("Waypoint loop complete: restarting from waypoint 1.")
 
