@@ -73,11 +73,16 @@ def evaluate(
 ):
     new_state = state
 
-    received_aruco_pos = True
-    if state_vars.get("received_aruco_pos_time", None) is None:
-        received_aruco_pos = False
-    elif state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") >= ARUCO_POS_NOT_RECEIVED_TIME:
-        received_aruco_pos = False
+    received_aruco_pos = False
+    if state_vars.get("received_aruco_pos_time", None) is not None:
+        if state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") < ARUCO_POS_NOT_RECEIVED_TIME:
+            received_aruco_pos = True
+
+    # received_aruco_pos = True
+    # if state_vars.get("received_aruco_pos_time", None) is None:
+    #     received_aruco_pos = False
+    # elif state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") >= ARUCO_POS_NOT_RECEIVED_TIME:
+    #     received_aruco_pos = False
 
     if state_equal(state, State.IDLE):
         if state_vars.get("started_launch", False):
