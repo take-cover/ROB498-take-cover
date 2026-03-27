@@ -19,7 +19,7 @@ TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 TIMER_10_HZ = 1/10 # [1/Hz]
 
-LOG_LATEST_POSE = True
+LOG_LATEST_POSE = False
 LOG_SETPOINT = False
 
 SEARCH_WAYPOINTS = np.array([
@@ -184,7 +184,7 @@ class CommNode(Node):
             response.message = "No initial pose."
             return response
 
-        self.get_logger().info("Test requested, FSM Requested. Starting waypoint FSM.")
+        self.get_logger().info("Test requested. Starting waypoint FSM.")
 
         # update state vars
         self.state_vars["started_test"] = True

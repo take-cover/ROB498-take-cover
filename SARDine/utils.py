@@ -28,7 +28,7 @@ def NewPoseStamped(
         orient_w
 ):
     new_pose = PoseStamped()
-    new_pose.header.stamped = stamp
+    new_pose.header.stamp = stamp
     new_pose.header.frame_id = "map"
 
     new_pose.pose.position.x = pos_x

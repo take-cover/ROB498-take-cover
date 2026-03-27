@@ -56,7 +56,7 @@ def transition(state, event):
     if new_state is None:
         print(f"ERROR: FSM: Transition does not exist from state {state} with event {event}")
         new_state = state
-    else:
+    elif not state_equal(new_state, state):
         print(f"FSM: Transitioned from state {state} to {new_state} with event {event}")
     return new_state
 

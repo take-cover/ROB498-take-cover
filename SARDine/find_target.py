@@ -83,7 +83,7 @@ class TargetFinderNode(Node):
             [self.latest_aruco_pose.pose.position.x],
             [self.latest_aruco_pose.pose.position.y],
             [self.latest_aruco_pose.pose.position.z if not USE_VICON_Z else \
-             self.latest_drone_pose.pose.position.z - r_cm_m[2]] - ARUCO_TAG_Z_HEIGHT, 
+             self.latest_drone_pose.pose.position.z - r_cm_m[2] - ARUCO_TAG_Z_HEIGHT], 
             [1]
         ])
         r_pm_m = T_MC @ r_pc_c
