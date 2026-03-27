@@ -385,6 +385,8 @@ class CommNode(Node):
             self.setpoint_pose = self.tracking_setpoint_pose
         elif FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
             self.setpoint_pose = self.tracking_setpoint_pose
+        else:
+            self.setpoint_pose = self.latest_pose # should never get here...
 
 
     ############################################################################
