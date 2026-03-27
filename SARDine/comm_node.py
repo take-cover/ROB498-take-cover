@@ -9,6 +9,8 @@ from rclpy.qos import qos_profile_system_default
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
 
+import Jetson.GPIO as GPIO
+
 import FSM
 import utils
 
@@ -29,8 +31,6 @@ SEARCH_WAYPOINTS = np.array([
 WAYPOINT_REACH_TOL = 0.1  # [m]
 WAYPOINT_HOLD_TIME = 0.5   # [s]
 
-
-
 class CommNode(Node):
     """
     Handle main drone FSM logic and flying.
@@ -48,6 +48,10 @@ class CommNode(Node):
         self.searching_setpoint_pose = PoseStamped()
         self.tracking_setpoint_pose = PoseStamped()
         self.state = State() # mavros related
+        
+        # Setup GPIO for payload drop
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(12, GPIO.OUT, initial=GPIO.LOW)
         
         # Set up SEARCHING FSM
         self.create_timer(TIMER_10_HZ, self.run_searching_fsm)
@@ -362,9 +366,9 @@ class CommNode(Node):
         # !DROP_PAYLOAD --> DROP_PAYLOAD
         elif FSM.state_equal(new_state, FSM.State.DROP_PAYLOAD) \
         and not FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
+            GPIO.output(12, GPIO.HIGH)
             self.state_vars["dropped_payload"] = True
             self.get_logger().info("Payload dropped.")
-            # CALL TO TURN SERVO/DROP PAYLOAD GOES HERE
 
         # update state
         self.master_fsm = new_state
