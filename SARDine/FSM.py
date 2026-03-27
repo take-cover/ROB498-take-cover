@@ -29,8 +29,6 @@ TRANSITIONS = {
     (State.LAUNCHING, Event.REACHED_HOVER_HEIGHT): State.HOVERING,
 
     (State.HOVERING, Event.SERVICE_CALL_TEST): State.SEARCHING,
-    # (State.HOVERING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
-    # (State.HOVERING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING,
 
     (State.SEARCHING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
 
@@ -78,12 +76,6 @@ def evaluate(
         if state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") < ARUCO_POS_NOT_RECEIVED_TIME:
             received_aruco_pos = True
 
-    # received_aruco_pos = True
-    # if state_vars.get("received_aruco_pos_time", None) is None:
-    #     received_aruco_pos = False
-    # elif state_vars.get("now_s") - state_vars.get("received_aruco_pos_time") >= ARUCO_POS_NOT_RECEIVED_TIME:
-    #     received_aruco_pos = False
-
     if state_equal(state, State.IDLE):
         if state_vars.get("started_launch", False):
             new_state = transition(state, Event.SERVICE_CALL_LAUNCH)
@@ -99,16 +91,6 @@ def evaluate(
             new_state = transition(state, Event.SERVICE_CALL_TEST)
             service_call_test_done(True)
             print(SERVICE_CALL_TEST_DONE)
-        # if SERVICE_CALL_TEST_DONE:
-        #     if received_aruco_pos:
-        #         new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
-        #     else:
-        #         new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
-        # else:
-        #     if state_vars.get("started_test", False):
-        #         new_state = transition(state, Event.SERVICE_CALL_TEST)
-        #         service_call_test_done(True)
-        #         print(SERVICE_CALL_TEST_DONE)
 
     elif state_equal(state, State.SEARCHING):
         if received_aruco_pos:
