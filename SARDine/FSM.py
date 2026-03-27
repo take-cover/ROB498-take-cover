@@ -8,6 +8,7 @@ class State(Enum):
     HOVERING = auto()
     SEARCHING = auto()
     TRACKING = auto()
+    DROP_PAYLOAD = auto()
 
 SERVICE_CALL_LAUNCH_DONE = False
 SERVICE_CALL_TEST_DONE = False
@@ -20,6 +21,7 @@ class Event(Enum):
     RECEIVED_ARUCO_POSITION = auto()
     REACHED_SETPOINT = auto()
     TIMER_NOT_RECEIVED_ARUCO_POSITION = auto()
+    DROPPED_PAYLOAD = auto()
 
 TRANSITIONS = {
     (State.IDLE, Event.SERVICE_CALL_LAUNCH): State.LAUNCHING,
@@ -27,14 +29,17 @@ TRANSITIONS = {
     (State.LAUNCHING, Event.REACHED_HOVER_HEIGHT): State.HOVERING,
 
     (State.HOVERING, Event.SERVICE_CALL_TEST): State.SEARCHING,
-    (State.HOVERING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
-    (State.HOVERING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING,
+    # (State.HOVERING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
+    # (State.HOVERING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING,
 
     (State.SEARCHING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
 
-    (State.TRACKING, Event.REACHED_SETPOINT): State.HOVERING,
+    (State.TRACKING, (Event.REACHED_SETPOINT, False)): State.DROP_PAYLOAD,
+    (State.TRACKING, (Event.REACHED_SETPOINT, True)): State.TRACKING,
     (State.TRACKING, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION): State.SEARCHING,
-    (State.TRACKING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING
+    (State.TRACKING, Event.RECEIVED_ARUCO_POSITION): State.TRACKING,
+    
+    (State.DROP_PAYLOAD, Event.DROPPED_PAYLOAD): State.TRACKING
 }
 
 
@@ -85,16 +90,20 @@ def evaluate(
             new_state = transition(state, Event.REACHED_HOVER_HEIGHT)
 
     elif state_equal(state, State.HOVERING):
-        if SERVICE_CALL_TEST_DONE:
-            if received_aruco_pos:
-                new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
-            else:
-                new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
-        else:
-            if state_vars.get("started_test", False):
-                new_state = transition(state, Event.SERVICE_CALL_TEST)
-                service_call_test_done(True)
-                print(SERVICE_CALL_TEST_DONE)
+        if state_vars.get("started_test", False):
+            new_state = transition(state, Event.SERVICE_CALL_TEST)
+            service_call_test_done(True)
+            print(SERVICE_CALL_TEST_DONE)
+        # if SERVICE_CALL_TEST_DONE:
+        #     if received_aruco_pos:
+        #         new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
+        #     else:
+        #         new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
+        # else:
+        #     if state_vars.get("started_test", False):
+        #         new_state = transition(state, Event.SERVICE_CALL_TEST)
+        #         service_call_test_done(True)
+        #         print(SERVICE_CALL_TEST_DONE)
 
     elif state_equal(state, State.SEARCHING):
         if received_aruco_pos:
@@ -102,11 +111,15 @@ def evaluate(
 
     elif state_equal(state, State.TRACKING):
         if state_vars.get("tracking_setpoint_reached", False):
-            new_state = transition(state, Event.REACHED_SETPOINT)
+            new_state = transition(state, (Event.REACHED_SETPOINT, state_vars.get("dropped_payload", False)))
         elif received_aruco_pos:
             new_state = transition(state, Event.RECEIVED_ARUCO_POSITION)
         else:
             new_state = transition(state, Event.TIMER_NOT_RECEIVED_ARUCO_POSITION)
+            
+    elif state_equal(state, State.DROP_PAYLOAD):
+        if state_vars.get("dropped_payload", False):
+            new_state = transition(state, Event.DROPPED_PAYLOAD)
 
     else:
         print(f"FSM: invalid state: {state}")

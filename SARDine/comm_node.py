@@ -66,7 +66,8 @@ class CommNode(Node):
             "started_test": False,
             "hover_height_reached": False,
             "tracking_setpoint_reached": False,
-            "received_aruco_pos_time": None
+            "received_aruco_pos_time": None,
+            "dropped_payload": False
         }
 
         # Set up publishers
@@ -357,6 +358,13 @@ class CommNode(Node):
         elif not FSM.state_equal(new_state, FSM.State.SEARCHING) \
         and FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
             self.fsm_active = False
+            
+        # !DROP_PAYLOAD --> DROP_PAYLOAD
+        elif FSM.state_equal(new_state, FSM.State.DROP_PAYLOAD) \
+        and not FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
+            self.state_vars["dropped_payload"] = True
+            self.get_logger().info("Payload dropped.")
+            # CALL TO TURN SERVO/DROP PAYLOAD GOES HERE
 
         # update state
         self.master_fsm = new_state
@@ -370,6 +378,8 @@ class CommNode(Node):
         elif FSM.state_equal(self.master_fsm, FSM.State.SEARCHING):
             self.setpoint_pose = self.searching_setpoint_pose
         elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
+            self.setpoint_pose = self.tracking_setpoint_pose
+        elif FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
             self.setpoint_pose = self.tracking_setpoint_pose
 
 
