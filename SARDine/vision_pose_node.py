@@ -207,7 +207,7 @@ class MavrosVisionPoseNode(Node):
 
     def publish_initial_cam_pose(self):
         if self.initial_cam_pose is None:
-            self.get_logger().info("Initial pose not registered, nothing to publish")
+            self.get_logger().info("Initial camera pose not registered, nothing to publish")
         else:
             self.initial_cam_pose.header.stamp = self.get_clock().now().to_msg()
             self.init_cam_pose_pub.publish(self.initial_cam_pose)
@@ -223,7 +223,7 @@ class MavrosVisionPoseNode(Node):
 
     def publish_cam_to_vicon_tf(self):
         if self.cam_to_vicon_tf is None:
-            self.get_logger().info("Camera to Vicon transform not yet calculated, nothing to publish")
+            self.get_logger().info("Camera to Vicon transform not calculated, nothing to publish")
         else:
             self.cam_to_vicon_tf.header.stamp = self.get_clock().now().to_msg()
             self.cam_to_vicon_tf_pub.publish(self.cam_to_vicon_tf)
