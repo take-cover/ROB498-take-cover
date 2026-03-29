@@ -14,7 +14,7 @@ import Jetson.GPIO as GPIO
 import FSM
 import utils
 
-HOVER_Z = 0.5 # [m]
+HOVER_Z = 1.5 # [m]
 TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 TIMER_10_HZ = 1/10 # [1/Hz]
@@ -232,7 +232,7 @@ class CommNode(Node):
             
             current_pose_array = np.array([[current_pose.pose.x], [current_pose.pose.y], [0]])
             global SEARCH_WAYPOINTS
-            SEARCH_WAYPOINTS += current_pose_array
+            SEARCH_WAYPOINTS += current_pose_array # waypoints are relative to initial pose now
             self.get_logger().info(f"Updated search waypoints with initial pose offset: {SEARCH_WAYPOINTS}")
 
         self.latest_pose = current_pose
