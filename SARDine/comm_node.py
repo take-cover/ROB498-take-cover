@@ -1,7 +1,7 @@
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from std_srvs.srv import Trigger
+from std_srvs.srv import Trigger, SetBool
 from geometry_msgs.msg import PoseStamped, PoseArray
 
 from rclpy.qos import qos_profile_system_default
