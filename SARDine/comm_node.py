@@ -108,6 +108,7 @@ class CommNode(Node):
         self.srv_test = self.create_service(Trigger, 'rob498_drone_1/comm/test', self.callback_test)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_1/comm/land', self.callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_1/comm/abort', self.callback_abort)
+        self.srv_turn_servo = self.create_service(Trigger, 'rob498_drone_1/comm/turn_servo', self.callback_turn_servo)
 
         self.get_logger().info(f"CommNode initiailized; initial pose not yet received. Master-FSM initialized to state {self.master_fsm}")
 
@@ -214,6 +215,14 @@ class CommNode(Node):
 
         response.success = True
         response.message = "Drone aborted."
+        return response
+    
+    def callback_turn_servo(self, request, response):
+        GPIO.output(12, GPIO.HIGH)
+        self.get_logger().info("Servo turned on.")
+
+        response.success = True
+        response.message = "Servo turned on."
         return response
 
 
