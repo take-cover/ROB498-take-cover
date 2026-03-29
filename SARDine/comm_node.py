@@ -15,6 +15,7 @@ import FSM
 import utils
 
 HOVER_Z = 1.0 # [m]
+HEIGHT_LIMIT_Z = 2.0 # [m] maximum safe altitude
 TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 TIMER_10_HZ = 1/10 # [1/Hz]
@@ -83,6 +84,7 @@ class CommNode(Node):
         self.create_timer(TIMER_30_HZ, self.publish_setpoint) # publish waypoint at 30Hz
         self.create_timer(TIMER_0_5_HZ, self.print_setpoint)
         self.create_timer(TIMER_30_HZ, self.check_setpoint_status)
+        self.create_timer(TIMER_30_HZ, self.check_height_limit)
         self.setpoint_hold_start_time = None
         
         # Set up subscribers
@@ -195,7 +197,7 @@ class CommNode(Node):
     
 
     def callback_land(self, request, response):
-        """Handle LAND command: descend back to initial altitude"""        
+        """Handle LAND command: descend back to zero altitude"""        
         self.set_mode("AUTO.LAND")
 
         response.success = True
@@ -437,6 +439,14 @@ class CommNode(Node):
     def print_setpoint(self):
         self.get_logger().info(f"Current setpoint: x={self.setpoint_pose.pose.position.x}, y={self.setpoint_pose.pose.position.y}, z={self.setpoint_pose.pose.position.z}")
         
+        
+    ############################################################################
+    # Safety Functions
+    ############################################################################
+    def check_height_limit(self):
+        if self.latest_pose is not None and self.latest_pose.pose.position.z > HEIGHT_LIMIT_Z:
+            self.get_logger().warn(f"Height limit exceeded! Current altitude: {self.latest_pose.pose.position.z}m. Initiating abort.")
+            self.callback_abort(None, None)
 
 def main(args=None):
     rclpy.init(args=args)
