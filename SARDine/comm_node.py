@@ -21,6 +21,7 @@ TIMER_10_HZ = 1/10 # [1/Hz]
 
 LOG_LATEST_POSE = False
 LOG_SETPOINT = False
+LOG_STATE_TRANSITIONS = True
 
 SEARCH_WAYPOINTS = np.array([
     [1.0, 0.0, -1.0, 0.0],
@@ -401,6 +402,9 @@ class CommNode(Node):
             self.setpoint_pose = self.tracking_setpoint_pose
         else:
             self.setpoint_pose = self.latest_pose # should never get here...
+            
+        if LOG_STATE_TRANSITIONS and not FSM.state_equal(self.master_fsm, new_state):
+            self.get_logger().info(f"CHANGED STATE: {str(self.master_fsm)} --> {str(new_state)}")
 
 
     ############################################################################
