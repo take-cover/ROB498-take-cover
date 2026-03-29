@@ -219,11 +219,17 @@ class CommNode(Node):
         return response
     
     def callback_turn_servo(self, request, response):
-        GPIO.output(12, GPIO.HIGH)
-        self.get_logger().info("Servo turned on.")
-
-        response.success = True
-        response.message = "Servo turned on."
+        # request.data is True (1) for HIGH, False (0) for LOW
+        if request.data:
+            GPIO.output(12, GPIO.HIGH)
+            self.get_logger().info("Servo turned on.")
+            response.success = True
+            response.message = "Servo turned on."
+        else:
+            GPIO.output(12, GPIO.LOW)
+            self.get_logger().info("Servo turned off.")
+            response.success = True
+            response.message = "Servo turned off."
         return response
 
 
