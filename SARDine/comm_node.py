@@ -14,7 +14,7 @@ import Jetson.GPIO as GPIO
 import FSM
 import utils
 
-HOVER_Z = 1.5 # [m]
+HOVER_Z = 1.0 # [m]
 TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 TIMER_10_HZ = 1/10 # [1/Hz]
