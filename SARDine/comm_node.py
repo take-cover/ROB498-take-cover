@@ -240,7 +240,7 @@ class CommNode(Node):
             self.initial_pose = current_pose
             self.get_logger().info(f"Set initial pose: x={self.initial_pose.pose.position.x}, y={self.initial_pose.pose.position.y}, z={self.initial_pose.pose.position.z}")
             
-            current_pose_array = np.array([[current_pose.pose.x], [current_pose.pose.y], [0]])
+            current_pose_array = np.array([[current_pose.pose.position.x], [current_pose.pose.position.y], [0]])
             global SEARCH_WAYPOINTS
             SEARCH_WAYPOINTS += current_pose_array # waypoints are relative to initial pose now
             self.get_logger().info(f"Updated search waypoints with initial pose offset: {SEARCH_WAYPOINTS}")
