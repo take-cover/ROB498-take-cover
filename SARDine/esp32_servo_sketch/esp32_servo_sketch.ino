@@ -1,8 +1,8 @@
 #include <ESP32Servo.h>
 
 Servo myservo;
-const int servoSwitchPin = 2;   
-const int sensorSwitchPin = 4;
+const int servoSwitchPin = 4;   
+const int ledSwitchPin = 4;
 const int servoPin = 19; // Output for servo control
 const int ledPin = 21;    // Output to LED
 
@@ -11,7 +11,7 @@ void setup() {
 
   // Configure Inputs
   pinMode(servoSwitchPin, INPUT);
-  pinMode(sensorSwitchPin, INPUT);
+  pinMode(ledSwitchPin, INPUT);
   
   // Configure Output
   pinMode(ledPin, OUTPUT);
@@ -25,13 +25,13 @@ void setup() {
 void loop() {
   // 1. Continuous Servo Logic
   if (digitalRead(servoSwitchPin) == HIGH) {
-    myservo.write(180);
-  } else {
     myservo.write(0);
+  } else {
+    myservo.write(90);
   }
 
   // 2. LED Logic 
-  if (digitalRead(ledSwitchPin) == HIGH) {
+  if (digitalRead(servoSwitchPin) == HIGH) {
     digitalWrite(ledPin, HIGH); // Turn LED ON
   } else {
     digitalWrite(ledPin, LOW);  // Turn LED OFF
