@@ -2,7 +2,7 @@
 
 Servo myservo;
 const int servoSwitchPin = 25;   
-const int sensorSwitchPin = 26;
+const int ledSwitchPin = 26;
 const int servoPin = 33; // Output for servo control
 const int ledPin = 32;    // Output to LED
 
@@ -11,7 +11,7 @@ void setup() {
 
   // Configure Inputs
   pinMode(servoSwitchPin, INPUT);
-  pinMode(sensorSwitchPin, INPUT);
+  pinMode(ledSwitchPin, INPUT);
   
   // Configure Output
   pinMode(ledPin, OUTPUT);
@@ -25,13 +25,13 @@ void setup() {
 void loop() {
   // 1. Continuous Servo Logic
   if (digitalRead(servoSwitchPin) == HIGH) {
-    myservo.write(180);
-  } else {
     myservo.write(0);
+  } else {
+    myservo.write(90);
   }
 
   // 2. LED Logic 
-  if (digitalRead(sensorSwitchPin) == HIGH) {
+  if (digitalRead(ledSwitchPin) == HIGH) {
     digitalWrite(ledPin, HIGH); // Turn LED ON
   } else {
     digitalWrite(ledPin, LOW);  // Turn LED OFF
