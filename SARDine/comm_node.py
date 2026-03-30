@@ -19,6 +19,8 @@ HEIGHT_LIMIT_Z = 2.0 # [m] maximum safe altitude
 TIMER_30_HZ = 1/30 # [1/Hz]
 TIMER_0_5_HZ = 2 # [1/Hz]
 TIMER_10_HZ = 1/10 # [1/Hz]
+SERVO_OUTPUT_PIN = 12
+LED_OUTPUT_PIN = 16
 
 LOG_LATEST_POSE = False
 LOG_SETPOINT = False
@@ -52,7 +54,8 @@ class CommNode(Node):
         
         # Setup GPIO for payload drop
         GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(12, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(SERVO_OUTPUT_PIN, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(LED_OUTPUT_PIN, GPIO.OUT, initial=GPIO.LOW)
         
         # Set up SEARCHING FSM
         self.create_timer(TIMER_10_HZ, self.run_searching_fsm)
@@ -373,12 +376,14 @@ class CommNode(Node):
         # !DROP_PAYLOAD --> DROP_PAYLOAD
         elif FSM.state_equal(new_state, FSM.State.DROP_PAYLOAD) \
         and not FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
-            GPIO.output(12, GPIO.HIGH)
+            GPIO.output(SERVO_OUTPUT_PIN, GPIO.HIGH)
             self.state_vars["dropped_payload"] = True
             self.get_logger().info("Payload dropped.")
 
         # update state
         self.master_fsm = new_state
+        
+        led_status = GPIO.LOW
 
         if FSM.state_equal(self.master_fsm, FSM.State.IDLE):
             return
@@ -390,10 +395,13 @@ class CommNode(Node):
             self.setpoint_pose = self.searching_setpoint_pose
         elif FSM.state_equal(self.master_fsm, FSM.State.TRACKING):
             self.setpoint_pose = self.tracking_setpoint_pose
+            led_status = GPIO.HIGH
         elif FSM.state_equal(self.master_fsm, FSM.State.DROP_PAYLOAD):
             self.setpoint_pose = self.tracking_setpoint_pose
         else:
             self.setpoint_pose = self.latest_pose # should never get here...
+            
+        GPIO.output(LED_OUTPUT_PIN, led_status)
 
 
     ############################################################################
