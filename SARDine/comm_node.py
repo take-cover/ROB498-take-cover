@@ -320,6 +320,11 @@ class CommNode(Node):
         target_pose.pose = msg.pose
 
         target_pose.pose.position.z = HOVER_Z
+        # 180 degree rotation around Z axis to make LED visible from operator side
+        target_pose.pose.orientation.x = 0.0
+        target_pose.pose.orientation.y = 0.0
+        target_pose.pose.orientation.z = 1.0
+        target_pose.pose.orientation.w = 0.0
 
         self.tracking_setpoint_pose = target_pose
 
