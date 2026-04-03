@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-ARUCO_POS_NOT_RECEIVED_TIME = 3 # [s]
+ARUCO_POS_NOT_RECEIVED_TIME = 6 # [s]
 
 class State(Enum):
     IDLE = auto()
