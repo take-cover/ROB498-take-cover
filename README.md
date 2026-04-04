@@ -63,4 +63,4 @@ This is the repo for team Take Cover for ROB498
 
 
 # SARDine Setup
-
+* Replay rosbag with camera images: `ros2 run image_view image_saver --ros-args -r image:=/take_cover/aruco/debug_image`
