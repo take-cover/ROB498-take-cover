@@ -33,7 +33,7 @@ SEARCH_WAYPOINTS = np.array([
 
 WAYPOINT_REACH_TOL = 0.1  # [m]
 WAYPOINT_HOLD_TIME = 0.5   # [s]
-TRACKING_SETPOINT_HOLD_TIME = 1 # [s]
+TRACKING_SETPOINT_HOLD_TIME = 1.0 # [s]
 
 class CommNode(Node):
     """
