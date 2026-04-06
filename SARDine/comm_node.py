@@ -33,6 +33,7 @@ SEARCH_WAYPOINTS = np.array([
 
 WAYPOINT_REACH_TOL = 0.1  # [m]
 WAYPOINT_HOLD_TIME = 0.5   # [s]
+TRACKING_SETPOINT_HOLD_TIME = 1 # [s]
 
 class CommNode(Node):
     """
@@ -429,7 +430,7 @@ class CommNode(Node):
         if distance <= WAYPOINT_REACH_TOL:
             if self.setpoint_hold_start_time is None:
                 self.setpoint_hold_start_time = now_s
-            elif (now_s - self.setpoint_hold_start_time) >= WAYPOINT_HOLD_TIME:
+            elif (now_s - self.setpoint_hold_start_time) >= TRACKING_SETPOINT_HOLD_TIME:
                 self.get_logger().info(f"Reached setpoint")
                 reached_setpoint = True
                 self.setpoint_hold_start_time = None
