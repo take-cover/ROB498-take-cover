@@ -7,7 +7,7 @@ from rclpy.qos import qos_profile_system_default
 
 
 TIMER_30_HZ = 1/30 # [1/Hz]
-FRAMERATE = 60
+FRAMERATE = 30
 
 
 def gstreamer_pipeline(
